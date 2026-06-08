@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.env
+*.db
+*.sqlite3
+.git/
+.gitignore
+docs/
+tests/
+*.md
+*.log
+docker-compose.yml
+.dockerignore
+wishlist*.json
