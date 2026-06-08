@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,7 +18,43 @@ logging.basicConfig(
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Kindle Sale Monitor", version="1.0.0")
+def _init_default_settings():
+    db = SessionLocal()
+    try:
+        from app.models.settings import AppSettings
+        defaults = {
+            "check_interval_hours": "12",
+            "request_interval_seconds": "2",
+            "request_timeout_seconds": "30",
+            "max_retries": "3",
+        }
+        for key, value in defaults.items():
+            if not db.query(AppSettings).filter(AppSettings.key == key).first():
+                db.add(AppSettings(key=key, value=value))
+        db.commit()
+    finally:
+        db.close()
+
+_init_default_settings()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    from app.services.scheduler import start_scheduler
+    from app.models.settings import AppSettings
+    db = SessionLocal()
+    try:
+        interval_setting = db.query(AppSettings).filter(AppSettings.key == "check_interval_hours").first()
+        interval_hours = int(interval_setting.value) if interval_setting else app_settings.check_interval_hours
+    finally:
+        db.close()
+    start_scheduler(app, interval_hours=interval_hours)
+    yield
+    # Shutdown
+    from app.services.scheduler import stop_scheduler
+    stop_scheduler()
+
+app = FastAPI(title="Kindle Sale Monitor", version="1.0.0", lifespan=lifespan)
 templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(books.router)
