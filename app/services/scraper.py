@@ -1,0 +1,281 @@
+import logging
+import time
+import unicodedata
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Optional
+
+import httpx
+from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
+
+SALE_BON_BASE_URL = "https://www.sale-bon.com"
+SALE_BON_KINDLE_URL = "https://www.sale-bon.com/category/kindle"
+
+
+@dataclass
+class SaleItem:
+    title: str
+    author: Optional[str] = None
+    publisher: Optional[str] = None
+    asin: Optional[str] = None
+    amazon_url: Optional[str] = None
+    sale_bon_url: Optional[str] = None
+    volume: Optional[str] = None
+    sale_type: Optional[str] = None
+    discount_rate: Optional[int] = None
+    point_rate: Optional[int] = None
+    cashback_info: Optional[str] = None
+    price: Optional[int] = None
+    effective_price: Optional[int] = None
+    is_free: bool = False
+    is_cheapest: bool = False
+    is_high_return: bool = False
+    categories: list = field(default_factory=list)
+    tags: list = field(default_factory=list)
+    display_text: Optional[str] = None
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFKC", text)
+    normalized = normalized.replace("　", "").replace(" ", "").strip()
+    return normalized.lower()
+
+
+def _extract_asin_from_url(url: str) -> Optional[str]:
+    if not url:
+        return None
+    import re
+    match = re.search(r"/(?:dp|gp/product)/([A-Z0-9]{10})", url)
+    return match.group(1) if match else None
+
+
+def _parse_price(text: str) -> Optional[int]:
+    if not text:
+        return None
+    import re
+    digits = re.sub(r"[^\d]", "", text)
+    return int(digits) if digits else None
+
+
+def _parse_rate(text: str) -> Optional[int]:
+    if not text:
+        return None
+    import re
+    match = re.search(r"(\d+)\s*%", text)
+    return int(match.group(1)) if match else None
+
+
+def _parse_book_element(element, page_url: str) -> Optional[SaleItem]:
+    item = SaleItem(title="")
+
+    title_el = element.select_one("h2, h3, .title, .book-title, [class*='title']")
+    if title_el:
+        item.title = title_el.get_text(strip=True)
+
+    if not item.title:
+        return None
+
+    author_el = element.select_one(".author, [class*='author']")
+    if author_el:
+        item.author = author_el.get_text(strip=True)
+
+    amazon_link = element.select_one("a[href*='amazon.co.jp'], a[href*='amzn']")
+    if amazon_link:
+        item.amazon_url = amazon_link.get("href", "")
+        item.asin = _extract_asin_from_url(item.amazon_url)
+
+    sale_bon_link = element.select_one("a[href^='/'], a[href*='sale-bon.com']")
+    if sale_bon_link:
+        href = sale_bon_link.get("href", "")
+        if href.startswith("/"):
+            item.sale_bon_url = SALE_BON_BASE_URL + href
+        elif "sale-bon.com" in href:
+            item.sale_bon_url = href
+
+    price_el = element.select_one(".price, [class*='price']")
+    if price_el:
+        item.price = _parse_price(price_el.get_text(strip=True))
+
+    eff_price_el = element.select_one(".effective-price, .real-price, [class*='effective']")
+    if eff_price_el:
+        item.effective_price = _parse_price(eff_price_el.get_text(strip=True))
+
+    discount_el = element.select_one(".discount, [class*='discount'], [class*='off']")
+    if discount_el:
+        item.discount_rate = _parse_rate(discount_el.get_text(strip=True))
+
+    point_el = element.select_one(".point, [class*='point']")
+    if point_el:
+        item.point_rate = _parse_rate(point_el.get_text(strip=True))
+
+    tag_elements = element.select(
+        ".tag, .label, .badge, [class*='tag'], [class*='label'], [class*='badge']"
+    )
+    for tag_el in tag_elements:
+        tag_text = tag_el.get_text(strip=True)
+        if tag_text:
+            item.tags.append(tag_text)
+
+    element_text = element.get_text()
+
+    if any(t in element_text for t in ["最安値", "過去最安値", "最安"]):
+        item.is_cheapest = True
+        item.sale_type = "最安値"
+
+    if any(t in element_text for t in ["高還元", "ポイント還元"]):
+        item.is_high_return = True
+        if not item.sale_type:
+            item.sale_type = "高還元"
+
+    if any(t in element_text for t in ["無料", "0円", "フリー"]):
+        item.is_free = True
+        if not item.sale_type:
+            item.sale_type = "無料"
+
+    if any(t in element_text for t in ["キャッシュバック", "CB"]):
+        if not item.sale_type:
+            item.sale_type = "キャッシュバック"
+        cashback_el = element.select_one("[class*='cashback']")
+        if cashback_el:
+            item.cashback_info = cashback_el.get_text(strip=True)
+
+    if not item.sale_type and item.discount_rate:
+        item.sale_type = f"{item.discount_rate}%OFF"
+
+    item.display_text = " / ".join(item.tags) if item.tags else item.sale_type
+
+    return item
+
+
+def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list:
+    items = []
+
+    book_selectors = [
+        "article.book-item",
+        "div.book-entry",
+        "div.book-card",
+        "li.book-item",
+        "div[class*='book']",
+        "article",
+    ]
+
+    book_elements = []
+    for selector in book_selectors:
+        book_elements = soup.select(selector)
+        if book_elements:
+            logger.debug(f"Found {len(book_elements)} items with selector: {selector}")
+            break
+
+    if not book_elements:
+        amazon_links = soup.select("a[href*='amazon.co.jp']")
+        if amazon_links:
+            for link in amazon_links[:50]:
+                href = link.get("href", "")
+                asin = _extract_asin_from_url(href)
+                title = link.get_text(strip=True) or link.get("title", "")
+                if asin and title:
+                    items.append(SaleItem(title=title, asin=asin, amazon_url=href))
+        return items
+
+    for element in book_elements[:100]:
+        try:
+            item = _parse_book_element(element, page_url)
+            if item and item.title:
+                items.append(item)
+        except Exception as e:
+            logger.debug(f"Error parsing book element: {e}")
+
+    return items
+
+
+def scrape_sale_bon_page(
+    url: str,
+    client: httpx.Client,
+    interval_seconds: int = 2,
+    max_retries: int = 3,
+    timeout: int = 30,
+) -> list:
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                wait_time = interval_seconds * (2 ** (attempt - 1))
+                logger.info(f"Retry {attempt} for {url}, waiting {wait_time}s")
+                time.sleep(wait_time)
+
+            response = client.get(url, timeout=timeout)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, "html.parser")
+            items = _parse_sale_bon_html(soup, url)
+            logger.info(f"Scraped {len(items)} items from {url}")
+            return items
+
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"HTTP error {e.response.status_code} for {url}")
+            if e.response.status_code in (403, 404, 410):
+                return []
+        except httpx.TimeoutException:
+            logger.warning(f"Timeout fetching {url} (attempt {attempt+1})")
+        except Exception as e:
+            logger.warning(f"Error fetching {url}: {e} (attempt {attempt+1})")
+
+    logger.error(f"Failed to fetch {url} after {max_retries} retries")
+    return []
+
+
+def scrape_sale_bon(
+    books: list = None,
+    interval_seconds: int = 2,
+    max_retries: int = 3,
+    timeout: int = 30,
+) -> list:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; KindleSaleMonitor/1.0; +https://github.com/sota1111/kindle-sale-monitor)",
+        "Accept-Language": "ja,en;q=0.5",
+    }
+
+    all_items = []
+    seen_asins = set()
+
+    with httpx.Client(headers=headers, follow_redirects=True) as client:
+        try:
+            category_items = scrape_sale_bon_page(
+                SALE_BON_KINDLE_URL, client, interval_seconds, max_retries, timeout
+            )
+            for item in category_items:
+                if item.asin and item.asin not in seen_asins:
+                    seen_asins.add(item.asin)
+                    all_items.append(item)
+                elif not item.asin:
+                    all_items.append(item)
+            time.sleep(interval_seconds)
+        except Exception as e:
+            logger.error(f"Failed to scrape category page: {e}")
+
+        if books:
+            book_sale_bon_urls = [
+                b.sale_bon_url for b in books
+                if getattr(b, "sale_bon_url", None) and getattr(b, "enabled", True)
+            ]
+            for url in set(url for url in book_sale_bon_urls if url):
+                try:
+                    page_items = scrape_sale_bon_page(
+                        url, client, interval_seconds, max_retries, timeout
+                    )
+                    for item in page_items:
+                        if item.asin and item.asin not in seen_asins:
+                            seen_asins.add(item.asin)
+                            all_items.append(item)
+                        elif not item.asin:
+                            all_items.append(item)
+                    time.sleep(interval_seconds)
+                except Exception as e:
+                    logger.error(f"Failed to scrape {url}: {e}")
+
+    logger.info(f"Total scraped items: {len(all_items)}")
+    return all_items

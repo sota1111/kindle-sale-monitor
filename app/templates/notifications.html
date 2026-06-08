@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}通知履歴{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>通知履歴</h1>
+    <table>
+        <thead><tr><th>通知日時</th><th>本ID</th><th>理由</th><th>成功</th></tr></thead>
+        <tbody>
+        {% for n in notifications %}
+        <tr>
+            <td>{{ n.notified_at }}</td>
+            <td><a href="/books/{{ n.book_id }}">{{ n.book_id }}</a></td>
+            <td>{{ n.reason or "-" }}</td>
+            <td>{{ "○" if n.success else "✗" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">通知履歴なし</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

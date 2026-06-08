@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>{{ title }}</h1>
+    <form method="post">
+        <table style="width:100%">
+            <tr>
+                <th style="width:180px">作品名 *</th>
+                <td><input type="text" name="title" value="{{ book.title if book else '' }}" required style="width:100%"></td>
+            </tr>
+            <tr>
+                <th>作者名</th>
+                <td><input type="text" name="author" value="{{ book.author or '' if book else '' }}" style="width:100%"></td>
+            </tr>
+            <tr>
+                <th>出版社</th>
+                <td><input type="text" name="publisher" value="{{ book.publisher or '' if book else '' }}" style="width:100%"></td>
+            </tr>
+            <tr>
+                <th>Amazon URL</th>
+                <td><input type="url" name="amazon_url" value="{{ book.amazon_url or '' if book else '' }}" style="width:100%"></td>
+            </tr>
+            <tr>
+                <th>ASIN</th>
+                <td><input type="text" name="asin" value="{{ book.asin or '' if book else '' }}" style="width:100%"></td>
+            </tr>
+            <tr>
+                <th>sale-bon URL</th>
+                <td><input type="url" name="sale_bon_url" value="{{ book.sale_bon_url or '' if book else '' }}" style="width:100%"></td>
+            </tr>
+            <tr>
+                <th>メモ</th>
+                <td><textarea name="note" style="width:100%">{{ book.note or '' if book else '' }}</textarea></td>
+            </tr>
+            <tr>
+                <th>シリーズ監視</th>
+                <td><input type="checkbox" name="series_watch" value="true" {% if book and book.series_watch %}checked{% endif %}></td>
+            </tr>
+            {% if book %}
+            <tr>
+                <th>有効</th>
+                <td><input type="checkbox" name="enabled" value="true" {% if book.enabled %}checked{% endif %}></td>
+            </tr>
+            {% endif %}
+        </table>
+        <br>
+        <button type="submit" class="btn">保存</button>
+        <a href="/books" class="btn btn-secondary">キャンセル</a>
+    </form>
+</div>
+{% if book %}
+<div class="card">
+    <h2>この本を削除</h2>
+    <form method="post" action="/books/{{ book.id }}/delete" onsubmit="return confirm('削除しますか？')">
+        <button type="submit" class="btn btn-danger">削除</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
