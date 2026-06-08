@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     host: str = "0.0.0.0"
     port: int = 8000
+    
+    google_cloud_project: str = ""
+    firestore_database_id: str = "(default)"
+    local_wishlist_file: str = "wishlist.json"
 
     class Config:
         env_file = ".env"

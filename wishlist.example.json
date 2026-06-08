@@ -1,0 +1,16 @@
+[
+  {
+    "title": "進撃の巨人（1）",
+    "author": "諫山創",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00AQLK5X4",
+    "asin": "B00AQLK5X4",
+    "enabled": true
+  },
+  {
+    "title": "鬼滅の刃（1）",
+    "author": "吾峠呼世晴",
+    "amazon_url": "https://www.amazon.co.jp/dp/B01MSYQF7B",
+    "asin": "B01MSYQF7B",
+    "enabled": true
+  }
+]
