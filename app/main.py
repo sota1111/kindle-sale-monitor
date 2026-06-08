@@ -72,9 +72,19 @@ def health():
 def dashboard(request: Request, db: Session = Depends(get_db)):
     book_count = db.query(Book).count()
     pending_count = db.query(SaleHistory).filter(SaleHistory.notified == False).count()
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "book_count": book_count, "pending_count": pending_count},
+    recent_sales = db.query(SaleHistory).order_by(SaleHistory.fetched_at.desc()).limit(5).all()
+    recent_notifications = (
+        db.query(NotificationHistory)
+        .order_by(NotificationHistory.notified_at.desc())
+        .limit(5)
+        .all()
+    )
+    return templates.TemplateResponse(request, "dashboard.html", {
+            "book_count": book_count,
+            "pending_count": pending_count,
+            "recent_sales": recent_sales,
+            "recent_notifications": recent_notifications,
+        },
     )
 
 
@@ -86,12 +96,12 @@ def books_page(request: Request, enabled: str = None, db: Session = Depends(get_
     elif enabled == "false":
         query = query.filter(Book.enabled == False)
     book_list = query.all()
-    return templates.TemplateResponse("books.html", {"request": request, "books": book_list})
+    return templates.TemplateResponse(request, "books.html", {"books": book_list})
 
 
 @app.get("/books/new", response_class=HTMLResponse)
 def book_new_page(request: Request):
-    return templates.TemplateResponse("book_form.html", {"request": request, "book": None, "title": "本を登録"})
+    return templates.TemplateResponse(request, "book_form.html", {"book": None, "title": "本を登録"})
 
 
 @app.post("/books/new")
@@ -135,9 +145,7 @@ def book_detail_page(book_id: int, request: Request, db: Session = Depends(get_d
         .limit(50)
         .all()
     )
-    return templates.TemplateResponse(
-        "book_detail.html", {"request": request, "book": book, "sales": sales}
-    )
+    return templates.TemplateResponse(request, "book_detail.html", {"book": book, "sales": sales})
 
 
 @app.get("/books/{book_id}/edit", response_class=HTMLResponse)
@@ -145,7 +153,7 @@ def book_edit_page(book_id: int, request: Request, db: Session = Depends(get_db)
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    return templates.TemplateResponse("book_form.html", {"request": request, "book": book, "title": "本を編集"})
+    return templates.TemplateResponse(request, "book_form.html", {"book": book, "title": "本を編集"})
 
 
 @app.post("/books/{book_id}/edit")
@@ -191,7 +199,7 @@ def book_delete_form(book_id: int, db: Session = Depends(get_db)):
 @app.get("/sales", response_class=HTMLResponse)
 def sales_page(request: Request, db: Session = Depends(get_db)):
     sales = db.query(SaleHistory).order_by(SaleHistory.fetched_at.desc()).limit(100).all()
-    return templates.TemplateResponse("sale_history.html", {"request": request, "sales": sales})
+    return templates.TemplateResponse(request, "sale_history.html", {"sales": sales})
 
 
 @app.get("/notifications", response_class=HTMLResponse)
@@ -202,21 +210,38 @@ def notifications_page(request: Request, db: Session = Depends(get_db)):
         .limit(100)
         .all()
     )
-    return templates.TemplateResponse(
-        "notifications.html", {"request": request, "notifications": notifs}
-    )
+    return templates.TemplateResponse(request, "notifications.html", {"notifications": notifs})
 
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request, db: Session = Depends(get_db)):
     from app.models.settings import AppSettings
     setting_list = db.query(AppSettings).all()
-    return templates.TemplateResponse(
-        "settings.html", {"request": request, "settings": setting_list}
-    )
+    return templates.TemplateResponse(request, "settings.html", {"settings": setting_list})
+
+@app.post("/settings")
+async def settings_update_form(request: Request, db: Session = Depends(get_db)):
+    from app.models.settings import AppSettings
+    form_data = await request.form()
+    for key, value in form_data.items():
+        setting = db.query(AppSettings).filter(AppSettings.key == key).first()
+        if setting:
+            setting.value = str(value)
+        else:
+            db.add(AppSettings(key=key, value=str(value)))
+    db.commit()
+    try:
+        from app.services.scheduler import update_interval
+        interval_val = form_data.get("check_interval_hours")
+        if interval_val:
+            update_interval(int(interval_val))
+    except Exception:
+        pass
+    return RedirectResponse(url="/settings", status_code=303)
+
 
 
 @app.get("/errors", response_class=HTMLResponse)
 def error_logs_page(request: Request, db: Session = Depends(get_db)):
     errors = db.query(ErrorLog).order_by(ErrorLog.occurred_at.desc()).limit(100).all()
-    return templates.TemplateResponse("error_logs.html", {"request": request, "errors": errors})
+    return templates.TemplateResponse(request, "error_logs.html", {"errors": errors})

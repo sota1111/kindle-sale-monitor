@@ -3,11 +3,51 @@
 {% block content %}
 <div class="card">
     <h1>ダッシュボード</h1>
-    <p>Kindle漫画セール監視システムへようこそ。</p>
     <ul>
         <li>登録済み本: <strong>{{ book_count }}</strong> 件</li>
         <li>未通知セール: <strong>{{ pending_count }}</strong> 件</li>
     </ul>
-    <a href="/books" class="btn">ほしい本リストを見る</a>
+    <form method="post" action="/api/check/all" target="_blank" style="display:inline">
+        <button type="submit" class="btn">手動チェック実行</button>
+    </form>
+    <a href="/books" class="btn btn-secondary" style="margin-left:0.5rem">ほしい本リストを見る</a>
 </div>
+{% if recent_sales %}
+<div class="card">
+    <h2>最近のセール（上位5件）</h2>
+    <table>
+        <thead><tr><th>取得日時</th><th>作品</th><th>巻</th><th>割引率</th><th>最安値</th><th>通知</th></tr></thead>
+        <tbody>
+        {% for sale in recent_sales %}
+        <tr>
+            <td>{{ sale.fetched_at }}</td>
+            <td><a href="/books/{{ sale.book_id }}">{{ sale.book_id }}</a></td>
+            <td>{{ sale.volume or "-" }}</td>
+            <td>{{ sale.discount_rate or 0 }}%</td>
+            <td>{{ "○" if sale.is_cheapest else "-" }}</td>
+            <td>{{ "通知済" if sale.notified else "-" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% if recent_notifications %}
+<div class="card">
+    <h2>最近の通知（上位5件）</h2>
+    <table>
+        <thead><tr><th>通知日時</th><th>本</th><th>理由</th><th>成功</th></tr></thead>
+        <tbody>
+        {% for n in recent_notifications %}
+        <tr>
+            <td>{{ n.notified_at }}</td>
+            <td><a href="/books/{{ n.book_id }}">{{ n.book_id }}</a></td>
+            <td>{{ n.reason or "-" }}</td>
+            <td>{{ "○" if n.success else "✗" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 {% endblock %}
