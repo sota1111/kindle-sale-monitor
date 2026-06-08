@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request, Form, HTTPException
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -18,10 +18,12 @@ logging.basicConfig(
 
 Base.metadata.create_all(bind=engine)
 
+
 def _init_default_settings():
     db = SessionLocal()
     try:
         from app.models.settings import AppSettings
+
         defaults = {
             "check_interval_hours": "12",
             "request_interval_seconds": "2",
@@ -37,22 +39,30 @@ def _init_default_settings():
 
 _init_default_settings()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    from app.services.scheduler import start_scheduler
     from app.models.settings import AppSettings
+    from app.services.scheduler import start_scheduler
+
     db = SessionLocal()
     try:
-        interval_setting = db.query(AppSettings).filter(AppSettings.key == "check_interval_hours").first()
-        interval_hours = int(interval_setting.value) if interval_setting else app_settings.check_interval_hours
+        interval_setting = (
+            db.query(AppSettings).filter(AppSettings.key == "check_interval_hours").first()
+        )
+        interval_hours = (
+            int(interval_setting.value) if interval_setting else app_settings.check_interval_hours
+        )
     finally:
         db.close()
     start_scheduler(app, interval_hours=interval_hours)
     yield
     # Shutdown
     from app.services.scheduler import stop_scheduler
+
     stop_scheduler()
+
 
 app = FastAPI(title="Kindle Sale Monitor", version="1.0.0", lifespan=lifespan)
 templates = Jinja2Templates(directory="app/templates")
@@ -71,7 +81,7 @@ def health():
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
     book_count = db.query(Book).count()
-    pending_count = db.query(SaleHistory).filter(SaleHistory.notified == False).count()
+    pending_count = db.query(SaleHistory).filter(SaleHistory.notified.is_(False)).count()
     recent_sales = db.query(SaleHistory).order_by(SaleHistory.fetched_at.desc()).limit(5).all()
     recent_notifications = (
         db.query(NotificationHistory)
@@ -79,7 +89,10 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         .limit(5)
         .all()
     )
-    return templates.TemplateResponse(request, "dashboard.html", {
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {
             "book_count": book_count,
             "pending_count": pending_count,
             "recent_sales": recent_sales,
@@ -92,16 +105,18 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 def books_page(request: Request, enabled: str = None, db: Session = Depends(get_db)):
     query = db.query(Book)
     if enabled == "true":
-        query = query.filter(Book.enabled == True)
+        query = query.filter(Book.enabled.is_(True))
     elif enabled == "false":
-        query = query.filter(Book.enabled == False)
+        query = query.filter(Book.enabled.is_(False))
     book_list = query.all()
     return templates.TemplateResponse(request, "books.html", {"books": book_list})
 
 
 @app.get("/books/new", response_class=HTMLResponse)
 def book_new_page(request: Request):
-    return templates.TemplateResponse(request, "book_form.html", {"book": None, "title": "本を登録"})
+    return templates.TemplateResponse(
+        request, "book_form.html", {"book": None, "title": "本を登録"}
+    )
 
 
 @app.post("/books/new")
@@ -118,6 +133,7 @@ def book_create_form(
     db: Session = Depends(get_db),
 ):
     from app.models.book import Book
+
     book = Book(
         title=title,
         author=author or None,
@@ -153,7 +169,9 @@ def book_edit_page(book_id: int, request: Request, db: Session = Depends(get_db)
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    return templates.TemplateResponse(request, "book_form.html", {"book": book, "title": "本を編集"})
+    return templates.TemplateResponse(
+        request, "book_form.html", {"book": book, "title": "本を編集"}
+    )
 
 
 @app.post("/books/{book_id}/edit")

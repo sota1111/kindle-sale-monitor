@@ -48,11 +48,15 @@ def match_book_to_sale_item(book, sale_item) -> tuple:
             return True, True
 
     if book.title and sale_item.title and book.author and sale_item.author:
-        if _texts_match(book.title, sale_item.title) and _texts_match(book.author, sale_item.author):
+        if _texts_match(book.title, sale_item.title) and _texts_match(
+            book.author, sale_item.author
+        ):
             return True, True
 
     if book.title and sale_item.title and book.publisher and sale_item.publisher:
-        if _texts_match(book.title, sale_item.title) and _texts_match(book.publisher, sale_item.publisher):
+        if _texts_match(book.title, sale_item.title) and _texts_match(
+            book.publisher, sale_item.publisher
+        ):
             return True, True
 
     if book.title and sale_item.title:
@@ -107,7 +111,9 @@ def match_books(sale_items: list, books: list) -> list:
 
                 results.append((book, sale_item, is_certain))
                 logger.info(
-                    f"Match: book='{book.title}' <-> sale='{sale_item.title}' (certain={is_certain})"
+                    "Match: "
+                    f"book='{book.title}' <-> sale='{sale_item.title}' "
+                    f"(certain={is_certain})"
                 )
 
     return results

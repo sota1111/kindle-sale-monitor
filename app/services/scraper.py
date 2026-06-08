@@ -4,7 +4,6 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
-from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
@@ -114,7 +113,9 @@ def _parse_book_element(element, page_url: str) -> Optional[SaleItem]:
     if point_el:
         item.point_rate = _parse_rate(point_el.get_text(strip=True))
 
-    tag_elements = element.select(".tag, .label, .badge, [class*='tag'], [class*='label'], [class*='badge']")
+    tag_elements = element.select(
+        ".tag, .label, .badge, [class*='tag'], [class*='label'], [class*='badge']"
+    )
     for tag_el in tag_elements:
         tag_text = tag_el.get_text(strip=True)
         if tag_text:
@@ -192,7 +193,13 @@ def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list:
     return items
 
 
-def scrape_sale_bon_page(url: str, client: httpx.Client, interval_seconds: int = 2, max_retries: int = 3, timeout: int = 30) -> list:
+def scrape_sale_bon_page(
+    url: str,
+    client: httpx.Client,
+    interval_seconds: int = 2,
+    max_retries: int = 3,
+    timeout: int = 30,
+) -> list:
     for attempt in range(max_retries):
         try:
             if attempt > 0:
@@ -257,7 +264,9 @@ def scrape_sale_bon(
             ]
             for url in set(url for url in book_sale_bon_urls if url):
                 try:
-                    page_items = scrape_sale_bon_page(url, client, interval_seconds, max_retries, timeout)
+                    page_items = scrape_sale_bon_page(
+                        url, client, interval_seconds, max_retries, timeout
+                    )
                     for item in page_items:
                         if item.asin and item.asin not in seen_asins:
                             seen_asins.add(item.asin)

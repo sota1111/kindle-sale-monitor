@@ -1,4 +1,5 @@
 import logging
+
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -6,9 +7,10 @@ logger = logging.getLogger(__name__)
 
 def send_notification(book, sale_history, reason: str, db: Session) -> bool:
     """Send Discord notification for a sale. Returns True on success."""
+    from datetime import datetime, timezone
+
     from app.config import settings
     from app.models.notification import NotificationHistory
-    from datetime import datetime, timezone
 
     notif_record = NotificationHistory(
         book_id=book.id,

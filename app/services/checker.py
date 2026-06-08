@@ -13,7 +13,9 @@ from app.models.sale_history import SaleHistory
 logger = logging.getLogger(__name__)
 
 
-def _record_error(db: Session, url: Optional[str], error_type: str, error_msg: str, stack: str = "") -> None:
+def _record_error(
+    db: Session, url: Optional[str], error_type: str, error_msg: str, stack: str = ""
+) -> None:
     error = ErrorLog(
         occurred_at=datetime.now(timezone.utc),
         url=url,
@@ -55,7 +57,7 @@ def _is_duplicate_sale(db: Session, book_id: int, sale_item) -> bool:
         db.query(SaleHistory)
         .filter(
             SaleHistory.book_id == book_id,
-            SaleHistory.notified == True,
+            SaleHistory.notified.is_(True),
         )
         .order_by(SaleHistory.fetched_at.desc())
         .first()
@@ -94,7 +96,7 @@ def run_check_all(db: Session) -> dict:
     notified_count = 0
 
     try:
-        books = db.query(Book).filter(Book.enabled == True).all()
+        books = db.query(Book).filter(Book.enabled.is_(True)).all()
         books_checked = len(books)
         logger.info(f"Starting check for {books_checked} books")
 
@@ -107,8 +109,17 @@ def run_check_all(db: Session) -> dict:
 
         try:
             from app.models.settings import AppSettings
-            interval_setting = db.query(AppSettings).filter(AppSettings.key == "request_interval_seconds").first()
-            interval = int(interval_setting.value) if interval_setting else settings.request_interval_seconds
+
+            interval_setting = (
+                db.query(AppSettings)
+                .filter(AppSettings.key == "request_interval_seconds")
+                .first()
+            )
+            interval = (
+                int(interval_setting.value)
+                if interval_setting
+                else settings.request_interval_seconds
+            )
 
             retry_setting = db.query(AppSettings).filter(AppSettings.key == "max_retries").first()
             max_retries = int(retry_setting.value) if retry_setting else settings.max_retries
@@ -126,7 +137,12 @@ def run_check_all(db: Session) -> dict:
             monitor_log.error_message = str(e)
             monitor_log.finished_at = datetime.now(timezone.utc)
             db.commit()
-            return {"books_checked": books_checked, "sales_found": 0, "notified": 0, "error": str(e)}
+            return {
+                "books_checked": books_checked,
+                "sales_found": 0,
+                "notified": 0,
+                "error": str(e),
+            }
 
         matches = match_books(sale_items, books)
 
@@ -184,7 +200,13 @@ def run_check_all(db: Session) -> dict:
 
             except Exception as e:
                 logger.error(f"Error processing match for book {book.id}: {e}")
-                _record_error(db, getattr(sale_item, "sale_bon_url", None), "MatchProcessingError", str(e), traceback.format_exc())
+                _record_error(
+                    db,
+                    getattr(sale_item, "sale_bon_url", None),
+                    "MatchProcessingError",
+                    str(e),
+                    traceback.format_exc(),
+                )
 
         db.commit()
 
@@ -195,8 +217,15 @@ def run_check_all(db: Session) -> dict:
         monitor_log.finished_at = datetime.now(timezone.utc)
         db.commit()
 
-        logger.info(f"Check complete: {books_checked} books, {sales_found} sales, {notified_count} notifications")
-        return {"books_checked": books_checked, "sales_found": sales_found, "notified": notified_count}
+        logger.info(
+            "Check complete: "
+            f"{books_checked} books, {sales_found} sales, {notified_count} notifications"
+        )
+        return {
+            "books_checked": books_checked,
+            "sales_found": sales_found,
+            "notified": notified_count,
+        }
 
     except Exception as e:
         logger.error(f"Unexpected error in run_check_all: {e}")
