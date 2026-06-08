@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.database import get_db
 from app.models.book import Book
@@ -9,8 +10,11 @@ router = APIRouter(prefix="/api/books", tags=["books"])
 
 
 @router.get("", response_model=list[BookResponse])
-def list_books(db: Session = Depends(get_db)):
-    return db.query(Book).all()
+def list_books(enabled: Optional[bool] = Query(None), db: Session = Depends(get_db)):
+    query = db.query(Book)
+    if enabled is not None:
+        query = query.filter(Book.enabled == enabled)
+    return query.all()
 
 
 @router.post("", response_model=BookResponse, status_code=201)

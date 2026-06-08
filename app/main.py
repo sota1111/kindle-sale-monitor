@@ -1,7 +1,7 @@
 import logging
 
-from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -42,14 +42,55 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/books", response_class=HTMLResponse)
-def books_page(request: Request, db: Session = Depends(get_db)):
-    book_list = db.query(Book).all()
+def books_page(request: Request, enabled: str = None, db: Session = Depends(get_db)):
+    query = db.query(Book)
+    if enabled == "true":
+        query = query.filter(Book.enabled == True)
+    elif enabled == "false":
+        query = query.filter(Book.enabled == False)
+    book_list = query.all()
     return templates.TemplateResponse("books.html", {"request": request, "books": book_list})
+
+
+@app.get("/books/new", response_class=HTMLResponse)
+def book_new_page(request: Request):
+    return templates.TemplateResponse("book_form.html", {"request": request, "book": None, "title": "本を登録"})
+
+
+@app.post("/books/new")
+def book_create_form(
+    request: Request,
+    title: str = Form(...),
+    author: str = Form(""),
+    publisher: str = Form(""),
+    amazon_url: str = Form(""),
+    asin: str = Form(""),
+    sale_bon_url: str = Form(""),
+    note: str = Form(""),
+    series_watch: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    from app.models.book import Book
+    book = Book(
+        title=title,
+        author=author or None,
+        publisher=publisher or None,
+        amazon_url=amazon_url or None,
+        asin=asin or None,
+        sale_bon_url=sale_bon_url or None,
+        note=note or None,
+        series_watch=series_watch,
+    )
+    db.add(book)
+    db.commit()
+    return RedirectResponse(url="/books", status_code=303)
 
 
 @app.get("/books/{book_id}", response_class=HTMLResponse)
 def book_detail_page(book_id: int, request: Request, db: Session = Depends(get_db)):
     book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
     sales = (
         db.query(SaleHistory)
         .filter(SaleHistory.book_id == book_id)
@@ -60,6 +101,54 @@ def book_detail_page(book_id: int, request: Request, db: Session = Depends(get_d
     return templates.TemplateResponse(
         "book_detail.html", {"request": request, "book": book, "sales": sales}
     )
+
+
+@app.get("/books/{book_id}/edit", response_class=HTMLResponse)
+def book_edit_page(book_id: int, request: Request, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return templates.TemplateResponse("book_form.html", {"request": request, "book": book, "title": "本を編集"})
+
+
+@app.post("/books/{book_id}/edit")
+def book_update_form(
+    book_id: int,
+    request: Request,
+    title: str = Form(...),
+    author: str = Form(""),
+    publisher: str = Form(""),
+    amazon_url: str = Form(""),
+    asin: str = Form(""),
+    sale_bon_url: str = Form(""),
+    note: str = Form(""),
+    series_watch: bool = Form(False),
+    enabled: bool = Form(True),
+    db: Session = Depends(get_db),
+):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    book.title = title
+    book.author = author or None
+    book.publisher = publisher or None
+    book.amazon_url = amazon_url or None
+    book.asin = asin or None
+    book.sale_bon_url = sale_bon_url or None
+    book.note = note or None
+    book.series_watch = series_watch
+    book.enabled = enabled
+    db.commit()
+    return RedirectResponse(url=f"/books/{book_id}", status_code=303)
+
+
+@app.post("/books/{book_id}/delete")
+def book_delete_form(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if book:
+        db.delete(book)
+        db.commit()
+    return RedirectResponse(url="/books", status_code=303)
 
 
 @app.get("/sales", response_class=HTMLResponse)

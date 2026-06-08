@@ -67,3 +67,38 @@ def test_delete_book():
     book_id = create_resp.json()["id"]
     response = client.delete(f"/api/books/{book_id}")
     assert response.status_code == 204
+
+def test_health_check():
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_get_nonexistent_book():
+    response = client.get("/api/books/99999")
+    assert response.status_code == 404
+
+
+def test_book_list_filter():
+    client.post("/api/books", json={"title": "有効本", "enabled": True})
+    client.post("/api/books", json={"title": "無効本", "enabled": False})
+    response = client.get("/api/books")
+    assert response.status_code == 200
+    assert len(response.json()) >= 2
+
+def test_api_book_filter():
+    # Ensure we have at least one enabled and one disabled
+    client.post("/api/books", json={"title": "Filter Test Enabled", "enabled": True})
+    client.post("/api/books", json={"title": "Filter Test Disabled", "enabled": False})
+    
+    # Test enabled=true
+    resp_enabled = client.get("/api/books?enabled=true")
+    assert resp_enabled.status_code == 200
+    for book in resp_enabled.json():
+        assert book["enabled"] is True
+        
+    # Test enabled=false
+    resp_disabled = client.get("/api/books?enabled=false")
+    assert resp_disabled.status_code == 200
+    for book in resp_disabled.json():
+        assert book["enabled"] is False
