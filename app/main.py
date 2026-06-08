@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.api import books, check, history, settings
+from app.api import books, check, history, run, settings
 from app.config import settings as app_settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.models import Book, ErrorLog, NotificationHistory, SaleHistory
@@ -71,10 +71,16 @@ app.include_router(books.router)
 app.include_router(check.router)
 app.include_router(history.router)
 app.include_router(settings.router)
+app.include_router(run.router)
 
 
 @app.get("/api/health")
 def health():
+    return {"status": "ok"}
+
+
+@app.get("/healthz")
+def healthz():
     return {"status": "ok"}
 
 
