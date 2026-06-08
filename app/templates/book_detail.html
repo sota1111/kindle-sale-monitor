@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }} - 詳細{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>{{ book.title }}</h1>
+    <p>作者: {{ book.author or "-" }}</p>
+    <p>出版社: {{ book.publisher or "-" }}</p>
+    <p>ASIN: {{ book.asin or "-" }}</p>
+    <p>Amazon URL: {% if book.amazon_url %}<a href="{{ book.amazon_url }}">{{ book.amazon_url }}</a>{% else %}-{% endif %}</p>
+    <p>sale-bon URL: {% if book.sale_bon_url %}<a href="{{ book.sale_bon_url }}">{{ book.sale_bon_url }}</a>{% else %}-{% endif %}</p>
+    <p>有効: {{ "有効" if book.enabled else "無効" }}</p>
+</div>
+<div class="card">
+    <h2>セール履歴</h2>
+    <table>
+        <thead><tr><th>取得日時</th><th>巻</th><th>割引率</th><th>還元率</th><th>価格</th><th>最安値</th><th>通知</th></tr></thead>
+        <tbody>
+        {% for sale in sales %}
+        <tr>
+            <td>{{ sale.fetched_at }}</td>
+            <td>{{ sale.volume or "-" }}</td>
+            <td>{{ sale.discount_rate or 0 }}%</td>
+            <td>{{ sale.point_rate or 0 }}%</td>
+            <td>{{ sale.price or "-" }}円</td>
+            <td>{{ "○" if sale.is_cheapest else "-" }}</td>
+            <td>{{ "通知済" if sale.notified else "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">セール履歴なし</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

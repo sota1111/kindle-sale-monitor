@@ -1,0 +1,96 @@
+import logging
+
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
+from app.api import books, check, history, settings
+from app.config import settings as app_settings
+from app.database import Base, SessionLocal, engine, get_db
+from app.models import Book, ErrorLog, NotificationHistory, SaleHistory
+
+logging.basicConfig(
+    level=getattr(logging, app_settings.log_level.upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Kindle Sale Monitor", version="1.0.0")
+templates = Jinja2Templates(directory="app/templates")
+
+app.include_router(books.router)
+app.include_router(check.router)
+app.include_router(history.router)
+app.include_router(settings.router)
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    book_count = db.query(Book).count()
+    pending_count = db.query(SaleHistory).filter(SaleHistory.notified == False).count()
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "book_count": book_count, "pending_count": pending_count},
+    )
+
+
+@app.get("/books", response_class=HTMLResponse)
+def books_page(request: Request, db: Session = Depends(get_db)):
+    book_list = db.query(Book).all()
+    return templates.TemplateResponse("books.html", {"request": request, "books": book_list})
+
+
+@app.get("/books/{book_id}", response_class=HTMLResponse)
+def book_detail_page(book_id: int, request: Request, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.id == book_id).first()
+    sales = (
+        db.query(SaleHistory)
+        .filter(SaleHistory.book_id == book_id)
+        .order_by(SaleHistory.fetched_at.desc())
+        .limit(50)
+        .all()
+    )
+    return templates.TemplateResponse(
+        "book_detail.html", {"request": request, "book": book, "sales": sales}
+    )
+
+
+@app.get("/sales", response_class=HTMLResponse)
+def sales_page(request: Request, db: Session = Depends(get_db)):
+    sales = db.query(SaleHistory).order_by(SaleHistory.fetched_at.desc()).limit(100).all()
+    return templates.TemplateResponse("sale_history.html", {"request": request, "sales": sales})
+
+
+@app.get("/notifications", response_class=HTMLResponse)
+def notifications_page(request: Request, db: Session = Depends(get_db)):
+    notifs = (
+        db.query(NotificationHistory)
+        .order_by(NotificationHistory.notified_at.desc())
+        .limit(100)
+        .all()
+    )
+    return templates.TemplateResponse(
+        "notifications.html", {"request": request, "notifications": notifs}
+    )
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request, db: Session = Depends(get_db)):
+    from app.models.settings import AppSettings
+    setting_list = db.query(AppSettings).all()
+    return templates.TemplateResponse(
+        "settings.html", {"request": request, "settings": setting_list}
+    )
+
+
+@app.get("/errors", response_class=HTMLResponse)
+def error_logs_page(request: Request, db: Session = Depends(get_db)):
+    errors = db.query(ErrorLog).order_by(ErrorLog.occurred_at.desc()).limit(100).all()
+    return templates.TemplateResponse("error_logs.html", {"request": request, "errors": errors})

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}ダッシュボード - Kindle Sale Monitor{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>ダッシュボード</h1>
+    <p>Kindle漫画セール監視システムへようこそ。</p>
+    <ul>
+        <li>登録済み本: <strong>{{ book_count }}</strong> 件</li>
+        <li>未通知セール: <strong>{{ pending_count }}</strong> 件</li>
+    </ul>
+    <a href="/books" class="btn">ほしい本リストを見る</a>
+</div>
+{% endblock %}

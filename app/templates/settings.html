@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}設定{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>設定</h1>
+    <table>
+        <thead><tr><th>設定キー</th><th>現在の値</th><th>更新日時</th></tr></thead>
+        <tbody>
+        {% for s in settings %}
+        <tr>
+            <td>{{ s.key }}</td>
+            <td>{{ s.value }}</td>
+            <td>{{ s.updated_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">設定なし</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

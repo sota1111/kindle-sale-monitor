@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}ほしい本リスト{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>ほしい本リスト</h1>
+    <a href="/books/new" class="btn">本を登録</a>
+</div>
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>作品名</th><th>作者</th><th>ASIN</th><th>有効</th><th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in books %}
+            <tr>
+                <td>{{ book.id }}</td>
+                <td><a href="/books/{{ book.id }}">{{ book.title }}</a></td>
+                <td>{{ book.author or "-" }}</td>
+                <td>{{ book.asin or "-" }}</td>
+                <td>{{ "有効" if book.enabled else "無効" }}</td>
+                <td>
+                    <a href="/books/{{ book.id }}/edit" class="btn btn-secondary">編集</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">登録された本はありません</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
