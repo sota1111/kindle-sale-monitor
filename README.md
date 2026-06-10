@@ -175,6 +175,17 @@ gcloud scheduler jobs create http kindle-sale-monitor-job \
 }
 \`\`\`
 
+#### 初期監視対象作品サンプル
+
+`wishlist.example.json` には主要な監視対象漫画の初期データが含まれています。
+ローカル実行時はそのまま使用できます:
+
+```bash
+cp wishlist.example.json wishlist.json
+```
+
+Firestore に一括登録する場合は、GCPコンソールの Firestore 画面から `books` コレクションに各エントリを手動で追加するか、Admin SDK を使用してください。
+
 ## Discord通知の設定
 
 1. Discordサーバーの「サーバー設定」→「連携サービス」→「Webhook」→「新しいWebhookを作成」

@@ -12,5 +12,68 @@
     "amazon_url": "https://www.amazon.co.jp/dp/B01MSYQF7B",
     "asin": "B01MSYQF7B",
     "enabled": true
+  },
+  {
+    "title": "鋼の錬金術師（1）",
+    "author": "荒川弘",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00BXVBJ3G",
+    "asin": "B00BXVBJ3G",
+    "enabled": true
+  },
+  {
+    "title": "ゴールデンカムイ（1）",
+    "author": "野田サトル",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00VXBN7Y0",
+    "asin": "B00VXBN7Y0",
+    "enabled": true
+  },
+  {
+    "title": "BECK（1）",
+    "author": "ハロルド作石",
+    "amazon_url": "https://www.amazon.co.jp/dp/B009FYFNG0",
+    "asin": "B009FYFNG0",
+    "enabled": true
+  },
+  {
+    "title": "HUNTER×HUNTER（1）",
+    "author": "冨樫義博",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00IY4PVGO",
+    "asin": "B00IY4PVGO",
+    "enabled": true
+  },
+  {
+    "title": "87CLOCKERS（1）",
+    "author": "渡辺多恵子",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00N2RJVKK",
+    "asin": "B00N2RJVKK",
+    "enabled": true
+  },
+  {
+    "title": "BLUE GIANT（1）",
+    "author": "石塚真一",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00N1KTJM0",
+    "asin": "B00N1KTJM0",
+    "enabled": true
+  },
+  {
+    "title": "惰性67パーセント（1）",
+    "author": "ねむようこ",
+    "amazon_url": "https://www.amazon.co.jp/dp/B075SJHVWD",
+    "asin": "B075SJHVWD",
+    "enabled": true
+  },
+  {
+    "title": "クロサギ（1）",
+    "author": "夏原武（原作）黒丸（漫画）",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00FO29SXG",
+    "asin": "B00FO29SXG",
+    "enabled": true
+  },
+  {
+    "title": "封神演義（完全版）（1）",
+    "author": "藤崎竜",
+    "amazon_url": "https://www.amazon.co.jp/dp/B00JEN5L5G",
+    "asin": "B00JEN5L5G",
+    "enabled": true
   }
 ]
