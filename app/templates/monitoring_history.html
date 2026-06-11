@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}監視履歴（非通知）{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>監視履歴（非通知）</h1>
+    <p>条件に一致せず通知しなかった記録です。</p>
+    <table>
+        <thead>
+            <tr>
+                <th>日時</th>
+                <th>本</th>
+                <th>非通知理由</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.skipped_at }}</td>
+            <td><a href="/books/{{ log.book_id }}">{{ log.book_id }}</a></td>
+            <td>{{ log.skip_reason }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">記録なし</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

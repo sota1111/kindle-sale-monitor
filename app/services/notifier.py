@@ -1,3 +1,4 @@
+import json
 import logging
 
 from sqlalchemy.orm import Session
@@ -5,17 +6,21 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
-def send_notification(book, sale_history, reason: str, db: Session) -> bool:
+def send_notification(
+    book, sale_history, reason: str, db: Session, matched_reasons: list[str] | None = None
+) -> bool:
     """Send Discord notification for a sale. Returns True on success."""
     from datetime import datetime, timezone
 
     from app.config import settings
     from app.models.notification import NotificationHistory
 
+    matched_json = json.dumps(matched_reasons, ensure_ascii=False) if matched_reasons else None
     notif_record = NotificationHistory(
         book_id=book.id,
         sale_history_id=sale_history.id,
         reason=reason,
+        matched_conditions=matched_json,
         notified_at=datetime.now(timezone.utc),
     )
 
@@ -27,6 +32,12 @@ def send_notification(book, sale_history, reason: str, db: Session) -> bool:
         db.commit()
         return False
 
+    conditions_text = ""
+    if matched_reasons:
+        conditions_text = "\n".join(f"  ・{r}" for r in matched_reasons)
+    else:
+        conditions_text = f"  ・{reason}"
+
     message = f"""【Kindle セール通知】
 通知理由: {reason}
 作品名: {book.title}
@@ -34,7 +45,10 @@ def send_notification(book, sale_history, reason: str, db: Session) -> bool:
 セール種別: {sale_history.sale_type or "不明"}
 割引率: {sale_history.discount_rate or 0}%
 ポイント還元率: {sale_history.point_rate or 0}%
+過去最安値更新: {"✅ 更新" if sale_history.is_cheapest else "❌ 非更新"}
 キャッシュバック: {sale_history.cashback_info or "なし"}
+条件マッチ理由:
+{conditions_text}
 価格: {sale_history.price or "不明"}円
 実質価格: {sale_history.effective_price or "不明"}円
 sale-bon表示: {sale_history.display_text or ""}

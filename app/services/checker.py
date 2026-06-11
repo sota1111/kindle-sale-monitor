@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.models.book import Book
 from app.models.log import ErrorLog, MonitorLog
+from app.models.notification_condition import NotificationCondition
 from app.models.sale_history import SaleHistory
+from app.models.skip_log import SkipLog
+from app.services.condition_evaluator import evaluate_conditions
 
 logger = logging.getLogger(__name__)
 
@@ -167,40 +170,32 @@ def run_check_all(db: Session) -> dict:
                     logger.info(f"Duplicate sale for '{book.title}', skipping notification")
                     continue
 
-                should_notify = False
-                reasons = []
+                conditions = (
+                    db.query(NotificationCondition)
+                    .filter(NotificationCondition.book_id == book.id)
+                    .all()
+                )
+                result = evaluate_conditions(book, sale_item, conditions)
 
-                if sale_item.is_cheapest and book.notify_on_cheapest:
-                    should_notify = True
-                    reasons.append("過去最安値として掲載")
-                if sale_item.is_high_return and book.notify_on_high_return:
-                    should_notify = True
-                    reasons.append("高還元として掲載")
-                if sale_item.is_free and book.notify_on_free:
-                    should_notify = True
-                    reasons.append("無料として掲載")
-                if sale_item.cashback_info and book.notify_on_cashback:
-                    should_notify = True
-                    reasons.append("キャッシュバック対象として掲載")
-                if (book.notify_discount_threshold and sale_item.discount_rate and
-                        sale_item.discount_rate >= book.notify_discount_threshold):
-                    should_notify = True
-                    reasons.append(f"割引率{sale_item.discount_rate}%（閾値{book.notify_discount_threshold}%以上）")
-                if (book.notify_return_threshold and sale_item.point_rate and
-                        sale_item.point_rate >= book.notify_return_threshold):
-                    should_notify = True
-                    reasons.append(f"還元率{sale_item.point_rate}%（閾値{book.notify_return_threshold}%以上）")
-                if (book.notify_price_threshold and sale_item.effective_price and
-                        sale_item.effective_price <= book.notify_price_threshold):
-                    should_notify = True
-                    reasons.append(f"実質価格{sale_item.effective_price}円（閾値{book.notify_price_threshold}円以下）")
-
-                if should_notify:
-                    reason = " / ".join(reasons)
-                    success = send_notification(book, sale_history, reason, db)
+                if result.should_notify:
+                    reason = " / ".join(result.matched_reasons)
+                    success = send_notification(
+                        book, sale_history, reason, db, matched_reasons=result.matched_reasons
+                    )
                     if success:
                         sale_history.notified = True
                         notified_count += 1
+                else:
+                    skip_log = SkipLog(
+                        book_id=book.id,
+                        sale_history_id=sale_history.id,
+                        skip_reason=" / ".join(result.skip_reasons),
+                    )
+                    db.add(skip_log)
+                    logger.info(
+                        f"Skipped notification for '{book.title}': "
+                        f"{' / '.join(result.skip_reasons)}"
+                    )
 
             except Exception as e:
                 logger.error(f"Error processing match for book {book.id}: {e}")

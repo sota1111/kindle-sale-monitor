@@ -18,6 +18,8 @@ class NotificationHistory(Base):
     notified_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # JSON array of matched reason strings.
+    matched_conditions: Mapped[str | None] = mapped_column(Text)
 
     book = relationship("Book", backref="notification_histories")
     sale_history = relationship("SaleHistory", backref="notification_histories")
