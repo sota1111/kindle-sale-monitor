@@ -13,7 +13,7 @@ from app.api import books, check, history, run, settings
 from app.auth import AuthMiddleware
 from app.config import settings as app_settings
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import Book, ErrorLog, NotificationHistory, SaleHistory
+from app.models import Book, ErrorLog, NotificationCondition, NotificationHistory, SaleHistory, SkipLog
 
 logging.basicConfig(
     level=getattr(logging, app_settings.log_level.upper(), logging.INFO),
