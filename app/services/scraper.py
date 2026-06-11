@@ -3,10 +3,11 @@ import time
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional, cast
 
 import httpx
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,8 @@ class SaleItem:
     is_free: bool = False
     is_cheapest: bool = False
     is_high_return: bool = False
-    categories: list = field(default_factory=list)
-    tags: list = field(default_factory=list)
+    categories: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     display_text: Optional[str] = None
     fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -70,7 +71,7 @@ def _parse_rate(text: str) -> Optional[int]:
     return int(match.group(1)) if match else None
 
 
-def _parse_book_element(element, page_url: str) -> Optional[SaleItem]:
+def _parse_book_element(element: Tag, page_url: str) -> Optional[SaleItem]:
     item = SaleItem(title="")
 
     title_el = element.select_one("h2, h3, .title, .book-title, [class*='title']")
@@ -86,12 +87,12 @@ def _parse_book_element(element, page_url: str) -> Optional[SaleItem]:
 
     amazon_link = element.select_one("a[href*='amazon.co.jp'], a[href*='amzn']")
     if amazon_link:
-        item.amazon_url = amazon_link.get("href", "")
+        item.amazon_url = cast(str, amazon_link.get("href", ""))
         item.asin = _extract_asin_from_url(item.amazon_url)
 
     sale_bon_link = element.select_one("a[href^='/'], a[href*='sale-bon.com']")
     if sale_bon_link:
-        href = sale_bon_link.get("href", "")
+        href = cast(str, sale_bon_link.get("href", ""))
         if href.startswith("/"):
             item.sale_bon_url = SALE_BON_BASE_URL + href
         elif "sale-bon.com" in href:
@@ -152,8 +153,8 @@ def _parse_book_element(element, page_url: str) -> Optional[SaleItem]:
     return item
 
 
-def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list:
-    items = []
+def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list[SaleItem]:
+    items: list[SaleItem] = []
 
     book_selectors = [
         "article.book-item",
@@ -164,7 +165,7 @@ def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list:
         "article",
     ]
 
-    book_elements = []
+    book_elements: list[Tag] = []
     for selector in book_selectors:
         book_elements = soup.select(selector)
         if book_elements:
@@ -175,9 +176,9 @@ def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list:
         amazon_links = soup.select("a[href*='amazon.co.jp']")
         if amazon_links:
             for link in amazon_links[:50]:
-                href = link.get("href", "")
+                href = cast(str, link.get("href", ""))
                 asin = _extract_asin_from_url(href)
-                title = link.get_text(strip=True) or link.get("title", "")
+                title = link.get_text(strip=True) or cast(str, link.get("title", ""))
                 if asin and title:
                     items.append(SaleItem(title=title, asin=asin, amazon_url=href))
         return items
@@ -199,7 +200,7 @@ def scrape_sale_bon_page(
     interval_seconds: int = 2,
     max_retries: int = 3,
     timeout: int = 30,
-) -> list:
+) -> list[SaleItem]:
     for attempt in range(max_retries):
         try:
             if attempt > 0:
@@ -229,18 +230,18 @@ def scrape_sale_bon_page(
 
 
 def scrape_sale_bon(
-    books: list = None,
+    books: list[Any] | None = None,
     interval_seconds: int = 2,
     max_retries: int = 3,
     timeout: int = 30,
-) -> list:
+) -> list[SaleItem]:
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; KindleSaleMonitor/1.0; +https://github.com/sota1111/kindle-sale-monitor)",
         "Accept-Language": "ja,en;q=0.5",
     }
 
-    all_items = []
-    seen_asins = set()
+    all_items: list[SaleItem] = []
+    seen_asins: set[str] = set()
 
     with httpx.Client(headers=headers, follow_redirects=True) as client:
         try:
