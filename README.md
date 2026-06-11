@@ -60,6 +60,25 @@ curl -X POST http://localhost:8000/run    # 監視処理実行（通知なし）
 - `DISCORD_WEBHOOK_URL` 未設定 → 通知はスキップ（ログに "DISCORD_WEBHOOK_URL not set" と出力）
 - `GOOGLE_CLOUD_PROJECT` 未設定 → SQLiteで動作（Firestoreは使用しない）
 
+## 認証設定
+
+このアプリはログイン認証が必要です。`.env` に以下の変数を設定してください。
+
+| 変数名 | 説明 | 例 |
+|--------|------|-----|
+| AUTH_USERNAME | ログインユーザー名 | admin |
+| AUTH_PASSWORD | ログインパスワード | changeme |
+| AUTH_SECRET_KEY | セッション署名キー（必ず変更してください） | random-secret-string |
+
+### 動作確認方法
+
+1. アプリを起動（`uvicorn app.main:app --reload` または `docker compose up`）
+2. http://localhost:8000 にアクセス → ログイン画面にリダイレクトされる
+3. `.env` に設定した `AUTH_USERNAME` / `AUTH_PASSWORD` でログイン
+4. ログアウトはナビバーの「ログアウト」ボタンから
+
+**注意**: Cloud Scheduler から呼び出される `POST /run` エンドポイントは認証不要です。
+
 ## セットアップ（ローカル実行）
 
 ### 前提条件
