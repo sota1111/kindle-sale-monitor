@@ -117,12 +117,16 @@ def run_check_all(db: Session) -> dict:
             )
             interval = (
                 int(interval_setting.value)
-                if interval_setting
+                if interval_setting and interval_setting.value
                 else settings.request_interval_seconds
             )
 
             retry_setting = db.query(AppSettings).filter(AppSettings.key == "max_retries").first()
-            max_retries = int(retry_setting.value) if retry_setting else settings.max_retries
+            max_retries = (
+                int(retry_setting.value)
+                if retry_setting and retry_setting.value
+                else settings.max_retries
+            )
 
             sale_items = scrape_sale_bon(
                 books=books,

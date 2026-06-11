@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -52,7 +53,9 @@ async def lifespan(app: FastAPI):
             db.query(AppSettings).filter(AppSettings.key == "check_interval_hours").first()
         )
         interval_hours = (
-            int(interval_setting.value) if interval_setting else app_settings.check_interval_hours
+            int(interval_setting.value)
+            if interval_setting and interval_setting.value
+            else app_settings.check_interval_hours
         )
     finally:
         db.close()
@@ -108,7 +111,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/books", response_class=HTMLResponse)
-def books_page(request: Request, enabled: str = None, db: Session = Depends(get_db)):
+def books_page(request: Request, enabled: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(Book)
     if enabled == "true":
         query = query.filter(Book.enabled.is_(True))
@@ -258,7 +261,7 @@ async def settings_update_form(request: Request, db: Session = Depends(get_db)):
         from app.services.scheduler import update_interval
         interval_val = form_data.get("check_interval_hours")
         if interval_val:
-            update_interval(int(interval_val))
+            update_interval(int(str(interval_val)))
     except Exception:
         pass
     return RedirectResponse(url="/settings", status_code=303)
