@@ -12,6 +12,7 @@ TEST_DATABASE_URL = "sqlite:///./test_kindle_monitor.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
@@ -83,6 +84,7 @@ def test_delete_book():
     response = client.delete(f"/api/books/{book_id}")
     assert response.status_code == 204
 
+
 def test_health_check():
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -101,19 +103,89 @@ def test_book_list_filter():
     assert response.status_code == 200
     assert len(response.json()) >= 2
 
+
 def test_api_book_filter():
     # Ensure we have at least one enabled and one disabled
     client.post("/api/books", json={"title": "Filter Test Enabled", "enabled": True})
     client.post("/api/books", json={"title": "Filter Test Disabled", "enabled": False})
-    
+
     # Test enabled=true
     resp_enabled = client.get("/api/books?enabled=true")
     assert resp_enabled.status_code == 200
     for book in resp_enabled.json():
         assert book["enabled"] is True
-        
+
     # Test enabled=false
     resp_disabled = client.get("/api/books?enabled=false")
     assert resp_disabled.status_code == 200
     for book in resp_disabled.json():
         assert book["enabled"] is False
+
+
+def test_create_notification_condition():
+    """Test creating a notification condition for a book."""
+    # First create a book
+    resp = client.post("/api/books", json={"title": "条件テスト漫画", "asin": "B00COND001"})
+    assert resp.status_code == 201
+    book_id = resp.json()["id"]
+
+    # Create a condition
+    cond_resp = client.post(
+        f"/api/books/{book_id}/conditions",
+        json={
+            "name": "50%以上OFF",
+            "min_discount_rate": 50,
+            "cashback_only": False,
+            "min_cashback_rate": None,
+            "volume_filter": None,
+            "cheapest_only": False,
+            "free_only": False,
+        },
+    )
+    assert cond_resp.status_code == 201
+    data = cond_resp.json()
+    assert data["min_discount_rate"] == 50
+    assert data["book_id"] == book_id
+    return book_id, data["id"]
+
+
+def test_list_notification_conditions():
+    """Test listing notification conditions for a book."""
+    resp = client.post("/api/books", json={"title": "条件一覧テスト", "asin": "B00COND002"})
+    assert resp.status_code == 201
+    book_id = resp.json()["id"]
+
+    client.post(
+        f"/api/books/{book_id}/conditions",
+        json={"min_discount_rate": 50},
+    )
+    client.post(
+        f"/api/books/{book_id}/conditions",
+        json={"cashback_only": True},
+    )
+
+    list_resp = client.get(f"/api/books/{book_id}/conditions")
+    assert list_resp.status_code == 200
+    conditions = list_resp.json()
+    assert len(conditions) >= 2
+
+
+def test_delete_notification_condition():
+    """Test deleting a notification condition."""
+    resp = client.post("/api/books", json={"title": "条件削除テスト", "asin": "B00COND003"})
+    assert resp.status_code == 201
+    book_id = resp.json()["id"]
+
+    cond_resp = client.post(
+        f"/api/books/{book_id}/conditions",
+        json={"min_discount_rate": 30},
+    )
+    assert cond_resp.status_code == 201
+    cond_id = cond_resp.json()["id"]
+
+    del_resp = client.delete(f"/api/books/{book_id}/conditions/{cond_id}")
+    assert del_resp.status_code == 204
+
+    list_resp = client.get(f"/api/books/{book_id}/conditions")
+    conditions = [c for c in list_resp.json() if c["id"] == cond_id]
+    assert len(conditions) == 0

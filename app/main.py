@@ -13,7 +13,14 @@ from app.api import books, check, history, run, settings
 from app.auth import AuthMiddleware
 from app.config import settings as app_settings
 from app.database import Base, SessionLocal, engine, get_db
-from app.models import Book, ErrorLog, NotificationCondition, NotificationHistory, SaleHistory, SkipLog
+from app.models import (
+    Book,
+    ErrorLog,
+    NotificationCondition,
+    NotificationHistory,
+    SaleHistory,
+    SkipLog,
+)
 
 logging.basicConfig(
     level=getattr(logging, app_settings.log_level.upper(), logging.INFO),
@@ -150,7 +157,7 @@ def books_page(request: Request, enabled: Optional[str] = None, db: Session = De
 
     # Attach condition_summary to each book as a simple attribute
     for book in books:
-        book.condition_summary = " | ".join(condition_map.get(book.id, [])) or None
+        setattr(book, "condition_summary", " | ".join(condition_map.get(book.id, [])) or None)
 
     return templates.TemplateResponse(request, "books.html", {"books": books})
 

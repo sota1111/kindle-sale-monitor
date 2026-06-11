@@ -58,7 +58,9 @@ def evaluate_single_condition(condition, sale_item) -> tuple[bool, list[str], li
             matched.append(f"キャッシュバック率{rate}% >= {condition.min_cashback_rate}%")
         else:
             actual = f"{rate}%" if rate is not None else "なし"
-            unmet.append(f"キャッシュバック率が条件未満 ({actual} < {condition.min_cashback_rate}%)")
+            unmet.append(
+                f"キャッシュバック率が条件未満 ({actual} < {condition.min_cashback_rate}%)"
+            )
 
     if condition.volume_filter:
         volume_list = _parse_volume_filter(condition.volume_filter)
@@ -118,7 +120,10 @@ def evaluate_legacy(book, sale_item) -> EvaluationResult:
 
     if should_notify:
         return EvaluationResult(should_notify=True, matched_reasons=reasons)
-    return EvaluationResult(should_notify=False, skip_reasons=["通知条件に一致する項目なし（レガシー判定）"])
+    return EvaluationResult(
+        should_notify=False,
+        skip_reasons=["通知条件に一致する項目なし（レガシー判定）"],
+    )
 
 
 def _extract_cashback_rate(cashback_info: str | None) -> int | None:

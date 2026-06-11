@@ -10,7 +10,9 @@ class SkipLog(Base):
     __tablename__ = "skip_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("books.id", ondelete="CASCADE"), index=True)
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), index=True
+    )
     sale_history_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("sale_history.id", ondelete="SET NULL")
     )
