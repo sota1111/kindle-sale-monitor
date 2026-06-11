@@ -125,8 +125,34 @@ def books_page(request: Request, enabled: Optional[str] = None, db: Session = De
         query = query.filter(Book.enabled.is_(True))
     elif enabled == "false":
         query = query.filter(Book.enabled.is_(False))
-    book_list = query.all()
-    return templates.TemplateResponse(request, "books.html", {"books": book_list})
+    books = query.all()
+
+    # Add condition summaries to books
+    book_ids = [b.id for b in books]
+    conditions_raw = db.query(NotificationCondition).filter(
+        NotificationCondition.book_id.in_(book_ids)
+    ).all()
+    condition_map: dict = {}
+    for c in conditions_raw:
+        if c.book_id not in condition_map:
+            condition_map[c.book_id] = []
+        # Build a simple summary string
+        parts = []
+        if c.min_discount_rate is not None:
+            parts.append(f"{c.min_discount_rate}%以上OFF")
+        if c.cashback_only:
+            parts.append("CB対象")
+        if c.cheapest_only:
+            parts.append("過去最安")
+        if c.free_only:
+            parts.append("無料")
+        condition_map[c.book_id].append(" / ".join(parts) if parts else "条件なし")
+
+    # Attach condition_summary to each book as a simple attribute
+    for book in books:
+        book.condition_summary = " | ".join(condition_map.get(book.id, [])) or None
+
+    return templates.TemplateResponse(request, "books.html", {"books": books})
 
 
 @app.get("/books/new", response_class=HTMLResponse)
@@ -178,7 +204,12 @@ def book_detail_page(book_id: int, request: Request, db: Session = Depends(get_d
         .limit(50)
         .all()
     )
-    return templates.TemplateResponse(request, "book_detail.html", {"book": book, "sales": sales})
+    conditions = db.query(NotificationCondition).filter(
+        NotificationCondition.book_id == book_id
+    ).all()
+    return templates.TemplateResponse(
+        request, "book_detail.html", {"book": book, "sales": sales, "conditions": conditions}
+    )
 
 
 @app.get("/books/{book_id}/edit", response_class=HTMLResponse)
@@ -246,6 +277,12 @@ def notifications_page(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return templates.TemplateResponse(request, "notifications.html", {"notifications": notifs})
+
+
+@app.get("/monitoring", response_class=HTMLResponse)
+def monitoring_page(request: Request, db: Session = Depends(get_db)):
+    logs = db.query(SkipLog).order_by(SkipLog.skipped_at.desc()).limit(100).all()
+    return templates.TemplateResponse(request, "monitoring_history.html", {"logs": logs})
 
 
 @app.get("/settings", response_class=HTMLResponse)

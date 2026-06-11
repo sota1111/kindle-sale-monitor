@@ -31,4 +31,143 @@
         </tbody>
     </table>
 </div>
+
+<div class="card">
+    <h2>通知条件</h2>
+    <p>条件が設定されていない場合は既存の通知設定が使用されます。複数の条件を設定した場合、いずれか1つが全て満たされれば通知されます（OR結合）。</p>
+    <table id="conditions-table">
+        <thead>
+            <tr>
+                <th>名前</th>
+                <th>割引率</th>
+                <th>CB必須</th>
+                <th>CB率</th>
+                <th>対象巻</th>
+                <th>過去最安</th>
+                <th>無料のみ</th>
+                <th>概要</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="conditions-tbody">
+            <tr><td colspan="9">読み込み中...</td></tr>
+        </tbody>
+    </table>
+
+    <h3>条件を追加</h3>
+    <form id="condition-form" onsubmit="return addCondition(event)">
+        <table>
+            <tr>
+                <th>名前（任意）</th>
+                <td><input type="text" id="cond-name" placeholder="例: 50%+CB"></td>
+            </tr>
+            <tr>
+                <th>最低割引率 (%)</th>
+                <td><input type="number" id="cond-min-discount" min="0" max="100" placeholder="例: 50"></td>
+            </tr>
+            <tr>
+                <th>キャッシュバック必須</th>
+                <td><input type="checkbox" id="cond-cashback-only"></td>
+            </tr>
+            <tr>
+                <th>最低CB率 (%)</th>
+                <td><input type="number" id="cond-min-cashback" min="0" max="100" placeholder="例: 20"></td>
+            </tr>
+            <tr>
+                <th>対象巻（カンマ区切り、例: 1,2,3 または latest）</th>
+                <td><input type="text" id="cond-volume-filter" placeholder="空欄=全巻"></td>
+            </tr>
+            <tr>
+                <th>過去最安更新のみ</th>
+                <td><input type="checkbox" id="cond-cheapest-only"></td>
+            </tr>
+            <tr>
+                <th>無料のみ</th>
+                <td><input type="checkbox" id="cond-free-only"></td>
+            </tr>
+        </table>
+        <br>
+        <button type="submit" class="btn">条件を追加</button>
+    </form>
+</div>
+
+<script>
+const bookId = {{ book.id }};
+
+async function loadConditions() {
+    const res = await fetch(`/api/books/${bookId}/conditions`);
+    const conditions = await res.json();
+    const tbody = document.getElementById('conditions-tbody');
+    if (conditions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9">条件なし（全通知）</td></tr>';
+        return;
+    }
+    tbody.innerHTML = conditions.map(c => `
+        <tr>
+            <td>${c.name || '-'}</td>
+            <td>${c.min_discount_rate != null ? c.min_discount_rate + '%以上' : '-'}</td>
+            <td>${c.cashback_only ? '○' : '-'}</td>
+            <td>${c.min_cashback_rate != null ? c.min_cashback_rate + '%以上' : '-'}</td>
+            <td>${c.volume_filter ? c.volume_filter.join(', ') : '-'}</td>
+            <td>${c.cheapest_only ? '○' : '-'}</td>
+            <td>${c.free_only ? '○' : '-'}</td>
+            <td>${c.summary}</td>
+            <td><button class="btn btn-danger" onclick="deleteCondition(${c.id})">削除</button></td>
+        </tr>
+    `).join('');
+}
+
+async function addCondition(event) {
+    event.preventDefault();
+    const name = document.getElementById('cond-name').value || null;
+    const min_discount_rate = document.getElementById('cond-min-discount').value;
+    const cashback_only = document.getElementById('cond-cashback-only').checked;
+    const min_cashback_rate = document.getElementById('cond-min-cashback').value;
+    const volume_filter_str = document.getElementById('cond-volume-filter').value.trim();
+    const cheapest_only = document.getElementById('cond-cheapest-only').checked;
+    const free_only = document.getElementById('cond-free-only').checked;
+
+    const volume_filter = volume_filter_str
+        ? volume_filter_str.split(',').map(s => s.trim()).filter(s => s)
+        : null;
+
+    const body = {
+        name: name,
+        min_discount_rate: min_discount_rate ? parseInt(min_discount_rate) : null,
+        cashback_only: cashback_only,
+        min_cashback_rate: min_cashback_rate ? parseInt(min_cashback_rate) : null,
+        volume_filter: volume_filter,
+        cheapest_only: cheapest_only,
+        free_only: free_only,
+    };
+
+    const res = await fetch(`/api/books/${bookId}/conditions`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+        document.getElementById('condition-form').reset();
+        loadConditions();
+    } else {
+        alert('条件の追加に失敗しました');
+    }
+    return false;
+}
+
+async function deleteCondition(conditionId) {
+    if (!confirm('この条件を削除しますか？')) return;
+    const res = await fetch(`/api/books/${bookId}/conditions/${conditionId}`, {
+        method: 'DELETE',
+    });
+    if (res.ok) {
+        loadConditions();
+    } else {
+        alert('削除に失敗しました');
+    }
+}
+
+loadConditions();
+</script>
 {% endblock %}
