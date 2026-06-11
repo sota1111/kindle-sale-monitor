@@ -179,7 +179,9 @@ def run_check_all(db: Session) -> dict:
 
                 if result.should_notify:
                     reason = " / ".join(result.matched_reasons)
-                    success = send_notification(book, sale_history, reason, db)
+                    success = send_notification(
+                        book, sale_history, reason, db, matched_reasons=result.matched_reasons
+                    )
                     if success:
                         sale_history.notified = True
                         notified_count += 1
