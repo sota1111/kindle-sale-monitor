@@ -27,6 +27,9 @@
         <a href="/notifications">通知履歴</a>
         <a href="/settings">設定</a>
         <a href="/errors">エラー履歴</a>
+        <form method="post" action="/logout" style="display:inline;">
+            <button type="submit" style="background:none;border:none;color:white;cursor:pointer;font-size:inherit;padding:0;margin-left:1rem;">ログアウト</button>
+        </form>
     </nav>
     <main>
         {% block content %}{% endblock %}

@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -6,8 +7,10 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import books, check, history, run, settings
+from app.auth import AuthMiddleware
 from app.config import settings as app_settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.models import Book, ErrorLog, NotificationHistory, SaleHistory
@@ -68,6 +71,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Kindle Sale Monitor", version="1.0.0", lifespan=lifespan)
+app.add_middleware(AuthMiddleware)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("AUTH_SECRET_KEY", "change-this-secret"),
+)
 templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(books.router)
@@ -272,3 +280,33 @@ async def settings_update_form(request: Request, db: Session = Depends(get_db)):
 def error_logs_page(request: Request, db: Session = Depends(get_db)):
     errors = db.query(ErrorLog).order_by(ErrorLog.occurred_at.desc()).limit(100).all()
     return templates.TemplateResponse(request, "error_logs.html", {"errors": errors})
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"error": None})
+
+
+@app.post("/login")
+def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    expected_username = os.environ.get("AUTH_USERNAME", "")
+    expected_password = os.environ.get("AUTH_PASSWORD", "")
+    if username == expected_username and password == expected_password:
+        request.session["user"] = username
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"error": "ユーザー名またはパスワードが正しくありません"},
+        status_code=401,
+    )
+
+
+@app.post("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)

@@ -1,3 +1,6 @@
+import os
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -22,6 +25,18 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def login_client():
+    os.environ["AUTH_USERNAME"] = "test-user"
+    os.environ["AUTH_PASSWORD"] = "test-password"
+    response = client.post(
+        "/login",
+        data={"username": "test-user", "password": "test-password"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
 
 
 def test_health():
