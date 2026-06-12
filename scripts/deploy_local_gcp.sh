@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ローカル gcloud CLI 薳趼による�roud Run デプロイスクリプバ
+# (kindle-sale-monitor)
+#
+# 佴い方:
+#   cp .env.example .env && vi .env
+#   source .env && bash scripts/deploy_local_gcp.sh
+
+if [ -f .env ]; then set -a; source .env; set +a; fi
+
+PROJECT_ID="${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}"
+REGION="${GCP_REGION:-asia-northeast1}"
+SERVICE_NAME="${CLOUD_RUN_SERVICE_NAME:-kindle-sale-monitor}"
+ARTIFACT_REPO="${ARTIFACT_REGISTRY_REPOSITORY:-kindle-monitor-registry}"
+IMAGE_VAR="${IMAGE_NAME:-kindle-sale-monitor}"
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_VAR}"
+
+DISCORD_WEBHOOK_URL="${DISCORD_WEBHOOK_URL:-}"
+GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:-${PROJECT_ID}}"
+
+echo "== Cloud Run デプロヴ: ${SERVICE_NAME} =="
+echo "Project: ${PROJECT_ID} | Region: ${REGION}"
+echo "Image: ${IMAGE}"
+
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+gcloud artifacts repositories describe "${ARTIFACT_REPO}" \
+  --project="${PROJECT_ID}" --location="${REGION}" &>/dev/null || \
+gcloud artifacts repositories create "${ARTIFACT_REPO}" \
+  --project="${PROJECT_ID}" --location="${REGION}" \
+  --repository-format=docker \
+  --description="Kindle Sale Monitor Docker images"
+
+gcloud builds submit . \
+  --project="${PROJECT_ID}" \
+  --tag="${IMAGE}:latest" \
+  --timeout=600s
+
+ENV_VARS="GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}"
+if [ -n "${DISCORD_WEBHOOK_URL}" ]; then
+  ENV_VARS="${ENV_VARS},DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}"
+fi
+
+gcloud run deploy "${SERVICE_NAME}" \
+  --image="${IMAGE}:latest" \
+  --project="${PROJECT_ID}" \
+  --region="${REGION}" \
+  --platform=managed \
+  --no-allow-unauthenticated \
+  --set-env-vars="${ENV_VARS}" \
+  --memory=512Mi \
+  --timeout=300 \
+  --quiet
+
+URL=$(gcloud run services describe "${SERVICE_NAME}" \
+  --region="${REGION}" --project="${PROJECT_ID}" \
+  --format='value(status.url)')
+
+echo ""
+echo "== デプロイ完了 =="
+echo "Service URL: ${URL}"
