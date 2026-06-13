@@ -170,6 +170,25 @@ GCPコンソール → Firestore → 「データベースを作成」
 
 ### 2. Cloud Runへのデプロイ
 
+### GCP Secret Manager セットアップ (Cloud Run本番デプロイ時)
+
+Cloud Run へのデプロイ前に、以下の機密情報をSecret Managerに登録してください。
+
+```bash
+# Secret の作成
+echo -n "パスワード" | gcloud secrets create kindle-monitor-auth-password --data-file=- --project=YOUR_PROJECT_ID
+echo -n "秘密鍵" | gcloud secrets create kindle-monitor-auth-secret-key --data-file=- --project=YOUR_PROJECT_ID
+echo -n "Webhook URL" | gcloud secrets create kindle-monitor-discord-webhook-url --data-file=- --project=YOUR_PROJECT_ID
+
+# Cloud Run サービスアカウントに Secret Manager アクセス権を付与
+# (デプロイ後、またはデフォルトのコンピュートSAに付与)
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:YOUR_PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+ローカル開発では `.env` ファイルに値を直接設定してください。
+
 \`\`\`bash
 # gcloud認証
 gcloud auth login
