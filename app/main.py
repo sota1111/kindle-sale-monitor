@@ -81,7 +81,7 @@ app = FastAPI(title="Kindle Sale Monitor", version="1.0.0", lifespan=lifespan)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.environ.get("AUTH_SECRET_KEY", "change-this-secret"),
+    secret_key=os.environ.get("AUTH_SECRET", "change-this-secret"),
 )
 templates = Jinja2Templates(directory="app/templates")
 
@@ -328,26 +328,43 @@ def error_logs_page(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"error": None})
+    return templates.TemplateResponse(request, "login.html", {
+        "firebase_api_key": os.environ.get("FIREBASE_API_KEY", ""),
+        "firebase_auth_domain": os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+        "firebase_project_id": os.environ.get("FIREBASE_PROJECT_ID", ""),
+        "firebase_app_id": os.environ.get("FIREBASE_APP_ID", ""),
+    })
 
 
-@app.post("/login")
-def login_submit(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-):
-    expected_username = os.environ.get("AUTH_USERNAME", "")
-    expected_password = os.environ.get("AUTH_PASSWORD", "")
-    if username == expected_username and password == expected_password:
-        request.session["user"] = username
-        return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(
-        request,
-        "login.html",
-        {"error": "ユーザー名またはパスワードが正しくありません"},
-        status_code=401,
-    )
+@app.post("/session")
+async def create_session(request: Request):
+    import firebase_admin
+    from firebase_admin import auth as firebase_auth
+    import json
+
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app()
+
+    body = await request.json()
+    id_token = body.get("idToken", "")
+
+    allowed_emails_str = os.environ.get("ALLOWED_USER_EMAILS", "")
+    allowed_emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
+
+    try:
+        decoded = firebase_auth.verify_id_token(id_token)
+        email = decoded.get("email", "")
+    except Exception:
+        from fastapi.responses import JSONResponse as FR
+        return FR(content={"error": "Invalid token"}, status_code=401)
+
+    if allowed_emails and email not in allowed_emails:
+        from fastapi.responses import JSONResponse as FR
+        return FR(content={"error": "Email not allowed"}, status_code=403)
+
+    request.session["user"] = email
+    from fastapi.responses import JSONResponse as FR
+    return FR(content={"success": True, "email": email})
 
 
 @app.post("/logout")

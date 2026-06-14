@@ -12,3 +12,4 @@ aiofiles>=23.0.0
 google-cloud-firestore>=2.16.0
 python-multipart>=0.0.9
 itsdangerous>=2.1.0
+firebase-admin>=6.0.0
