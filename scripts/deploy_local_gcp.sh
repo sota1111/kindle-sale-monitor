@@ -39,15 +39,14 @@ gcloud builds submit . \
   --timeout=600s
 
 # Secret Manager: 初回デプロイ前に以下を実行してください
-# echo -n "value" | gcloud secrets create kindle-monitor-auth-password --data-file=- --project=$PROJECT_ID
-# echo -n "value" | gcloud secrets create kindle-monitor-auth-secret-key --data-file=- --project=$PROJECT_ID
-# echo -n "value" | gcloud secrets create kindle-monitor-discord-webhook-url --data-file=- --project=$PROJECT_ID
+# echo -n "value" | gcloud secrets create kindle-monitor-auth-secret --data-file=- --project=$PROJECT_ID
 # gcloud run services add-iam-policy-binding kindle-sale-monitor \
 #   --member="serviceAccount:$(gcloud run services describe kindle-sale-monitor --region=$REGION --project=$PROJECT_ID --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || echo PROJECT_NUMBER-compute@developer.gserviceaccount.com)" \
 #   --role="roles/secretmanager.secretAccessor" --region=$REGION --project=$PROJECT_ID
 
 # Build --set-secrets string
-SET_SECRETS="AUTH_PASSWORD=kindle-monitor-auth-password:latest,AUTH_SECRET_KEY=kindle-monitor-auth-secret-key:latest"
+SET_SECRETS="AUTH_SECRET=kindle-monitor-auth-secret:latest"
+
 if [ -n "${DISCORD_WEBHOOK_URL:-}" ]; then
   # ローカルでの動作確認用: Cloud Runでは Secret Manager から取得
   SET_SECRETS="${SET_SECRETS},DISCORD_WEBHOOK_URL=kindle-monitor-discord-webhook-url:latest"
