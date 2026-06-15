@@ -1,205 +1,255 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>kindle-sale-monitor --status=live</title>
-    <style>
-        :root {
-            --bg-color: #0a0e12;
-            --text-color: #ffb300;
-            --dim-text: #8a6500;
-            --border-color: #ffb300;
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Courier New', 'Lucida Console', monospace;
-            margin: 0;
-            padding: 2rem;
-            line-height: 1.2;
-        }
-        header {
-            border: 1px solid var(--border-color);
-            padding: 1rem;
-            margin-bottom: 2rem;
-            position: relative;
-        }
-        .live-indicator {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            color: #ff3d00;
-            animation: blink 1s step-end infinite;
-        }
-        @keyframes blink { 50% { opacity: 0; } }
-        .prompt::before { content: "$ "; }
-        .filters {
-            margin-bottom: 1rem;
-        }
-        button {
-            background: transparent;
-            color: var(--text-color);
-            border: 1px solid var(--text-color);
-            padding: 0.3rem 1rem;
-            font-family: inherit;
-            cursor: pointer;
-            margin-right: 0.5rem;
-        }
-        button:hover, button.active {
-            background: var(--text-color);
-            color: var(--bg-color);
-        }
-        .summary {
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            border-bottom: 1px dashed var(--dim-text);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        th {
-            text-align: left;
-            border-bottom: 2px solid var(--border-color);
-            padding: 0.5rem;
-            color: var(--bg-color);
-            background: var(--text-color);
-        }
-        td {
-            padding: 0.5rem;
-            border-bottom: 1px solid var(--dim-text);
-        }
-        .discount-bar {
-            color: var(--text-color);
-            letter-spacing: -1px;
-        }
-        .review-section {
-            margin-top: 4rem;
-            border-top: 1px solid var(--dim-text);
-            padding-top: 1rem;
-        }
-        .review-comment {
-            margin-bottom: 0.5rem;
-            color: var(--dim-text);
-        }
-        footer {
-            margin-top: 3rem;
-            text-align: center;
-            color: var(--dim-text);
-            font-size: 0.8rem;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kindle Sale Monitor</title>
+<style>
+  :root {
+    --bg: #faf6f0;
+    --primary: #5d4037;
+    --sale: #ff6f00;
+    --danger: #e53935;
+    --text: #3e2723;
+    --font-heading: 'Georgia', serif;
+    --font-body: sans-serif;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    margin: 0;
+    padding: 0;
+  }
+  /* Header */
+  header {
+    background-color: var(--primary);
+    color: var(--bg);
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  h1 { font-family: var(--font-heading); margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+  .header-stats { display: flex; gap: 2rem; font-size: 0.9rem; }
+  .stat { display: flex; flex-direction: column; align-items: center; }
+  .stat-val { font-size: 1.2rem; font-weight: bold; color: #d7ccc8; }
+  .stat-highlight { color: var(--sale); }
+
+  /* Main */
+  .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; display: flex; gap: 2rem; }
+  .main-content { flex: 3; }
+  .sidebar { flex: 1; }
+
+  /* Filter Bar */
+  .filter-bar {
+    background: #efebe9;
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border: 1px solid #d7ccc8;
+  }
+  select, input {
+    padding: 0.5rem;
+    border: 1px solid #d7ccc8;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--text);
+  }
+  button {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Grid */
+  .book-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  .book-card {
+    background: #fff;
+    border: 1px solid #d7ccc8;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+  }
+  .book-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  .book-card.on-sale { border-color: var(--sale); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 111, 0, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(255, 111, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 111, 0, 0); } }
+
+  .cover {
+    width: 90px;
+    height: 130px;
+    border-radius: 4px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 0.5rem;
+    box-sizing: border-box;
+    font-family: var(--font-heading);
+  }
+  .sale-badge {
+    position: absolute;
+    top: -10px; right: -10px;
+    background: var(--danger);
+    color: white;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    transform: rotate(15deg);
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .details { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .title { font-family: var(--font-heading); font-size: 1.1rem; font-weight: bold; margin: 0 0 0.5rem 0; line-height: 1.3; }
+  .author { font-size: 0.85rem; color: #795548; margin-bottom: 0.5rem; }
+  .rating { color: #fbc02d; font-size: 0.8rem; margin-bottom: 0.5rem; }
+  .price-info { background: #fff8e1; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; }
+  .old-price { text-decoration: line-through; color: #9e9e9e; font-size: 0.8rem; }
+  .new-price { color: var(--danger); font-weight: bold; font-size: 1.2rem; margin-left: 0.5rem; }
+  .savings { font-size: 0.8rem; color: var(--sale); font-weight: bold; margin-top: 2px; }
+  .buy-btn { background: #f0c14b; border: 1px solid #a88734; color: #111; padding: 0.4rem; border-radius: 4px; text-align: center; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
+  .buy-btn:hover { background: #e2b037; }
+
+  /* Sidebar */
+  .chart-panel { background: #fff; border: 1px solid #d7ccc8; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
+  .chart-panel h3 { margin-top: 0; font-family: var(--font-heading); font-size: 1rem; border-bottom: 1px solid #efebe9; padding-bottom: 0.5rem; }
+  .bar-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem; }
+  .bar-label { width: 40px; }
+  .bar-wrap { flex: 1; height: 12px; background: #efebe9; border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--sale); }
+  
+  .add-panel { background: #efebe9; border: 1px dashed #bcaaa4; border-radius: 8px; padding: 1rem; text-align: center; }
+  .add-panel input { width: 100%; box-sizing: border-box; margin-bottom: 0.5rem; }
+
+  details { margin: 2rem auto; max-width: 800px; padding: 1rem; background: #efebe9; border-radius: 8px; font-size: 0.85rem; }
+  summary { cursor: pointer; font-weight: bold; color: var(--primary); }
+</style>
 </head>
 <body>
+  <header>
+    <h1>📚 Kindle Sale Monitor</h1>
+    <div class="header-stats">
+      <div class="stat">ウォッチ中<span class="stat-val">24冊</span></div>
+      <div class="stat">セール中<span class="stat-val stat-highlight">3冊</span></div>
+      <div class="stat">今日の節約額<span class="stat-val stat-highlight">¥4,280</span></div>
+    </div>
+  </header>
 
-<header>
-    <div class="live-indicator">● LIVE</div>
-    <div class="prompt">kindle-sale-monitor --status=live</div>
-    <div>System: Scanning Amazon Kindle Store...</div>
-    <div>Last Scan: 2026-06-15 14:32:01 JST</div>
-</header>
+  <div class="container">
+    <div class="main-content">
+      <div class="filter-bar">
+        <select><option>すべてのカテゴリ</option><option>ビジネス</option><option>小説</option><option>技術書</option></select>
+        <select id="discount-filter" onchange="filterGrid()"><option value="0">割引率すべて</option><option value="30">30% OFF以上</option><option value="50">50% OFF以上</option></select>
+        <select><option>価格順</option><option>割引率順</option></select>
+      </div>
 
-<main>
-    <div class="summary" id="summaryLine">
-        計 8冊 | 総節約額: ¥15,900 | 平均割引: 77%
+      <div class="book-grid" id="book-grid">
+      </div>
     </div>
 
-    <div class="filters">
-        <span class="dim">Filter:</span>
-        <button class="active" onclick="filterBooks(0, this)">[ALL]</button>
-        <button onclick="filterBooks(50, this)">[50%+]</button>
-        <button onclick="filterBooks(70, this)">[70%+]</button>
-        <button onclick="filterBooks(80, this)">[80%+]</button>
+    <div class="sidebar">
+      <div class="chart-panel">
+        <h3>週間節約推移</h3>
+        <div class="bar-row"><div class="bar-label">Mon</div><div class="bar-wrap"><div class="bar-fill" style="width:0%"></div></div></div>
+        <div class="bar-row"><div class="bar-label">Tue</div><div class="bar-wrap"><div class="bar-fill" style="width:40%"></div></div></div>
+        <div class="bar-row"><div class="bar-label">Wed</div><div class="bar-wrap"><div class="bar-fill" style="width:10%"></div></div></div>
+        <div class="bar-row"><div class="bar-label">Thu</div><div class="bar-wrap"><div class="bar-fill" style="width:80%"></div></div></div>
+        <div class="bar-row"><div class="bar-label">Fri</div><div class="bar-wrap"><div class="bar-fill" style="width:0%"></div></div></div>
+      </div>
+      <div class="add-panel">
+        <h3 style="margin-top:0; font-size:0.9rem;">ウォッチリストに追加</h3>
+        <input type="text" placeholder="ASIN または URL">
+        <button style="width:100%;">追加する</button>
+      </div>
     </div>
+  </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>タイトル</th>
-                <th>著者</th>
-                <th>元値</th>
-                <th>セール</th>
-                <th>割引率</th>
-                <th>ジャンル</th>
-                <th>終了日</th>
-            </tr>
-        </thead>
-        <tbody id="bookBody"></tbody>
-    </table>
-
-    <section class="review-section">
-        <div class="review-comment"># Claude's code review:</div>
-        <div class="review-comment">
-            "ターミナルUIは機能美の極致ですね。データが整然と並び、
-            情報密度が高い。個人的にはもう少しブレスを与えたいところですが、
-            エンジニアユーザーへの訴求力は抜群です。洗練された実用主義。★★★★☆"
-        </div>
-        <div class="review-comment"># Gemini's aesthetic assessment:</div>
-        <div class="review-comment">
-            "わあ、ダーク！かっこいい！ただ目が疲れそう…💻
-            Codexさんのページはまるでハッカーのアジトみたいで、ある意味最高です。
-            機能性は文句なし！でも、もしそこに虹色グラデーションが一本でもあれば…✨ ★★★☆☆"
-        </div>
-    </section>
-</main>
-
-<footer>
-    // Designed by Codex — Function over form, always
-</footer>
+  <details>
+    <summary>🤖 Design Credits & AI Reviews</summary>
+    <div style="margin-top:0.75rem;">
+      <p><strong>Designed by Codex</strong></p>
+      <p><strong>Codex's design note:</strong> 「価格モニタリングツールは意思決定支援ツールです。ユーザーが見たいのは"今すぐ買うべきかどうか"だけ。割引率と節約額を最も目立つ位置に置き、本のタイトルより先に目に入るよう設計しました。無駄な装飾は意思決定を遅らせる。」</p>
+      <p><strong>Gemini's review:</strong> 「クリーム×ブラウンの配色が書店の温もりを再現していて素晴らしい。書影のCSSプレースホルダーの色分けが各本の個性を出していて、グリッドが単調にならない。」</p>
+      <p><strong>Claude's review:</strong> 「フィルタ条件の組み合わせが直感的。ただ、"セール終了まで"のカウントダウン表示があると購買決定を促す緊急性が出てさらに良い。」</p>
+    </div>
+  </details>
 
 <script>
-    var books = [
-        { title: "Clean Code", author: "Robert C. Martin", original: 3200, sale: 320, discount: 90, genre: "プログラミング", ends: "2026-06-20" },
-        { title: "The Pragmatic Programmer", author: "Hunt & Thomas", original: 3800, sale: 760, discount: 80, genre: "プログラミング", ends: "2026-06-20" },
-        { title: "Design Patterns", author: "Gang of Four", original: 4500, sale: 900, discount: 80, genre: "プログラミング", ends: "2026-06-22" },
-        { title: "Atomic Habits", author: "James Clear", original: 1800, sale: 540, discount: 70, genre: "自己啓発", ends: "2026-06-18" },
-        { title: "The Mom Test", author: "Rob Fitzpatrick", original: 1500, sale: 750, discount: 50, genre: "ビジネス", ends: "2026-06-25" },
-        { title: "Thinking, Fast and Slow", author: "Daniel Kahneman", original: 2200, sale: 440, discount: 80, genre: "心理学", ends: "2026-06-19" },
-        { title: "Zero to One", author: "Peter Thiel", original: 1600, sale: 480, discount: 70, genre: "ビジネス", ends: "2026-06-21" },
-        { title: "Sapiens", author: "Yuval Noah Harari", original: 2400, sale: 240, discount: 90, genre: "歴史", ends: "2026-06-17" }
-    ];
+  const books = [
+    { title: "モダン・ソフトウェアエンジニアリング", author: "David Farley", rating: 4, oldPrice: 3520, newPrice: 1760, onSale: true, color: "linear-gradient(135deg, #2c3e50, #3498db)" },
+    { title: "アジャイルサムライ", author: "Jonathan Rasmusson", rating: 5, oldPrice: 2860, newPrice: 1430, onSale: true, color: "linear-gradient(135deg, #c0392b, #8e44ad)" },
+    { title: "Clean Architecture", author: "Robert C. Martin", rating: 4, oldPrice: 3520, newPrice: 2464, onSale: true, color: "linear-gradient(135deg, #16a085, #f39c12)" },
+    { title: "リーダブルコード", author: "Dustin Boswell", rating: 5, oldPrice: 2640, newPrice: 2640, onSale: false, color: "linear-gradient(135deg, #7f8c8d, #bdc3c7)" },
+    { title: "達人プログラマー", author: "David Thomas", rating: 5, oldPrice: 4180, newPrice: 4180, onSale: false, color: "linear-gradient(135deg, #2980b9, #2c3e50)" },
+    { title: "ドメイン駆動設計", author: "Eric Evans", rating: 4, oldPrice: 5720, newPrice: 5720, onSale: false, color: "linear-gradient(135deg, #8e44ad, #2c3e50)" }
+  ];
 
-    function getDiscountBar(pct) {
-        var blocks = Math.floor(pct / 10);
-        var bar = "";
-        for(var i=0; i<blocks; i++) bar += "█";
-        if (pct % 10 >= 5) bar += "▉";
-        return bar.padEnd(10, "░");
-    }
+  function renderGrid(filterDiscount = 0) {
+    const grid = document.getElementById('book-grid');
+    grid.innerHTML = '';
+    books.forEach(b => {
+      const discountRate = b.onSale ? Math.round((b.oldPrice - b.newPrice) / b.oldPrice * 100) : 0;
+      if (discountRate < filterDiscount) return;
 
-    function render(items) {
-        var body = document.getElementById("bookBody");
-        body.innerHTML = "";
-        items.forEach(function(b) {
-            var row = document.createElement("tr");
-            row.innerHTML = "<td>" + b.title + "</td>" +
-                            "<td>" + b.author + "</td>" +
-                            "<td>¥" + b.original.toLocaleString() + "</td>" +
-                            "<td>¥" + b.sale.toLocaleString() + "</td>" +
-                            "<td><span class='discount-bar'>" + getDiscountBar(b.discount) + "</span> " + b.discount + "%</td>" +
-                            "<td>" + b.genre + "</td>" +
-                            "<td>" + b.ends + "</td>";
-            body.appendChild(row);
-        });
-        
-        var totalSavings = items.reduce(function(acc, b) { return acc + (b.original - b.sale); }, 0);
-        var avgDiscount = items.length ? Math.round(items.reduce(function(acc, b) { return acc + b.discount; }, 0) / items.length) : 0;
-        document.getElementById("summaryLine").innerText = "計 " + items.length + "冊 | 総節約額: ¥" + totalSavings.toLocaleString() + " | 平均割引: " + avgDiscount + "%";
-    }
+      const savings = b.oldPrice - b.newPrice;
+      const stars = '⭐'.repeat(b.rating);
 
-    function filterBooks(min, btn) {
-        var btns = document.querySelectorAll(".filters button");
-        btns.forEach(function(b) { b.classList.remove("active"); });
-        btn.classList.add("active");
-        
-        var filtered = books.filter(function(b) { return b.discount >= min; });
-        render(filtered);
-    }
+      const html = `
+        <div class="book-card ${b.onSale ? 'on-sale' : ''}">
+          <div class="cover" style="background: ${b.color}">
+            ${b.onSale ? `<div class="sale-badge">-${discountRate}%</div>` : ''}
+            <span>Book Cover</span>
+          </div>
+          <div class="details">
+            <div>
+              <div class="title">${b.title}</div>
+              <div class="author">${b.author}</div>
+              <div class="rating">${stars}</div>
+              ${b.onSale ? `
+                <div class="price-info">
+                  <span class="old-price">¥${b.oldPrice.toLocaleString()}</span>
+                  <span class="new-price">¥${b.newPrice.toLocaleString()}</span>
+                  <div class="savings">¥${savings.toLocaleString()} 節約！</div>
+                </div>
+              ` : `
+                <div class="price-info">
+                  <span class="new-price" style="color:#333; margin-left:0;">¥${b.oldPrice.toLocaleString()}</span>
+                </div>
+              `}
+            </div>
+            <div class="buy-btn">Kindle購入</div>
+          </div>
+        </div>
+      `;
+      grid.innerHTML += html;
+    });
+  }
 
-    render(books);
+  function filterGrid() {
+    const val = parseInt(document.getElementById('discount-filter').value);
+    renderGrid(val);
+  }
+
+  window.onload = () => renderGrid(0);
 </script>
-
 </body>
 </html>
