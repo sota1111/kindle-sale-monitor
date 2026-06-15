@@ -1,106 +1,205 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kindle Sale Monitor — Demo</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #333; line-height: 1.6; }
-    .hero {
-      background: linear-gradient(135deg, #e65100 0%, #bf360c 100%);
-      color: white;
-      padding: 80px 24px 60px;
-      text-align: center;
-    }
-    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; margin-bottom: 16px; }
-    .hero p { font-size: clamp(1rem, 2.5vw, 1.25rem); opacity: 0.9; max-width: 600px; margin: 0 auto 32px; }
-    .badge { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; margin: 4px; }
-    .btn {
-      display: inline-block;
-      background: white;
-      color: #e65100;
-      text-decoration: none;
-      padding: 12px 28px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 1rem;
-      margin-top: 16px;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-    .features { padding: 60px 24px; max-width: 1000px; margin: 0 auto; }
-    .features h2 { text-align: center; font-size: 1.8rem; margin-bottom: 40px; color: #222; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
-    .card {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 28px 24px;
-      border-left: 4px solid #e65100;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-    .card .icon { font-size: 2rem; margin-bottom: 12px; }
-    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
-    .card p { font-size: 0.9rem; color: #666; }
-    .tech { background: #f0f4f8; padding: 40px 24px; text-align: center; }
-    .tech h2 { font-size: 1.4rem; margin-bottom: 20px; color: #555; }
-    .tech-badge {
-      display: inline-block;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 20px;
-      padding: 6px 16px;
-      font-size: 0.85rem;
-      margin: 4px;
-      color: #444;
-    }
-    footer { text-align: center; padding: 24px; color: #999; font-size: 0.85rem; }
-    footer a { color: #e65100; text-decoration: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kindle-sale-monitor --status=live</title>
+    <style>
+        :root {
+            --bg-color: #0a0e12;
+            --text-color: #ffb300;
+            --dim-text: #8a6500;
+            --border-color: #ffb300;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', 'Lucida Console', monospace;
+            margin: 0;
+            padding: 2rem;
+            line-height: 1.2;
+        }
+        header {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .live-indicator {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: #ff3d00;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .prompt::before { content: "$ "; }
+        .filters {
+            margin-bottom: 1rem;
+        }
+        button {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--text-color);
+            padding: 0.3rem 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+        button:hover, button.active {
+            background: var(--text-color);
+            color: var(--bg-color);
+        }
+        .summary {
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border-bottom: 1px dashed var(--dim-text);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th {
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+            padding: 0.5rem;
+            color: var(--bg-color);
+            background: var(--text-color);
+        }
+        td {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--dim-text);
+        }
+        .discount-bar {
+            color: var(--text-color);
+            letter-spacing: -1px;
+        }
+        .review-section {
+            margin-top: 4rem;
+            border-top: 1px solid var(--dim-text);
+            padding-top: 1rem;
+        }
+        .review-comment {
+            margin-bottom: 0.5rem;
+            color: var(--dim-text);
+        }
+        footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: var(--dim-text);
+            font-size: 0.8rem;
+        }
+    </style>
 </head>
 <body>
-  <div class="hero">
-    <h1>Kindle Sale Monitor</h1>
-    <p>Amazonのkindle書籍セール情報を自動監視し、ウォッチリストの本がセールになったら即座に通知するツール</p>
-    <div><span class="badge">📚 Kindleセール</span><span class="badge">🔔 自動通知</span><span class="badge">🐍 Python</span></div>
-    <br>
-    <a href="https://github.com/sota1111/kindle-sale-monitor" class="btn" target="_blank" rel="noopener">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:6px"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-      View on GitHub
-    </a>
-  </div>
-  <section class="features">
-    <h2>主な機能</h2>
-    <div class="grid">
-            <div class="card">
-        <div class="icon">🔍</div>
-        <h3>Kindleセール自動検出</h3>
-        <p>定期スキャンでAmazon Kindleのセール情報を自動収集</p>
-      </div>
-      <div class="card">
-        <div class="icon">📚</div>
-        <h3>ウォッチリスト管理</h3>
-        <p>気になる本を登録してセール開始を見逃さない</p>
-      </div>
-      <div class="card">
-        <div class="icon">🔔</div>
-        <h3>リアルタイム通知</h3>
-        <p>Discord・メール等でセール開始を即座に通知</p>
-      </div>
-      <div class="card">
-        <div class="icon">⏰</div>
-        <h3>定期スキャン</h3>
-        <p>バックグラウンドで自動実行。手動チェック不要</p>
-      </div>
+
+<header>
+    <div class="live-indicator">● LIVE</div>
+    <div class="prompt">kindle-sale-monitor --status=live</div>
+    <div>System: Scanning Amazon Kindle Store...</div>
+    <div>Last Scan: 2026-06-15 14:32:01 JST</div>
+</header>
+
+<main>
+    <div class="summary" id="summaryLine">
+        計 8冊 | 総節約額: ¥15,900 | 平均割引: 77%
     </div>
-  </section>
-  <div class="tech">
-    <h2>技術スタック</h2>
-    <span class="tech-badge">Python</span> <span class="tech-badge">Web Scraping</span> <span class="tech-badge">Discord API</span> <span class="tech-badge">Automation</span> <span class="tech-badge">AWS Lambda</span>
-  </div>
-  <footer>
-    <p>Built with ❤️ · <a href="https://github.com/sota1111/kindle-sale-monitor" target="_blank">GitHub</a></p>
-  </footer>
+
+    <div class="filters">
+        <span class="dim">Filter:</span>
+        <button class="active" onclick="filterBooks(0, this)">[ALL]</button>
+        <button onclick="filterBooks(50, this)">[50%+]</button>
+        <button onclick="filterBooks(70, this)">[70%+]</button>
+        <button onclick="filterBooks(80, this)">[80%+]</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>タイトル</th>
+                <th>著者</th>
+                <th>元値</th>
+                <th>セール</th>
+                <th>割引率</th>
+                <th>ジャンル</th>
+                <th>終了日</th>
+            </tr>
+        </thead>
+        <tbody id="bookBody"></tbody>
+    </table>
+
+    <section class="review-section">
+        <div class="review-comment"># Claude's code review:</div>
+        <div class="review-comment">
+            "ターミナルUIは機能美の極致ですね。データが整然と並び、
+            情報密度が高い。個人的にはもう少しブレスを与えたいところですが、
+            エンジニアユーザーへの訴求力は抜群です。洗練された実用主義。★★★★☆"
+        </div>
+        <div class="review-comment"># Gemini's aesthetic assessment:</div>
+        <div class="review-comment">
+            "わあ、ダーク！かっこいい！ただ目が疲れそう…💻
+            Codexさんのページはまるでハッカーのアジトみたいで、ある意味最高です。
+            機能性は文句なし！でも、もしそこに虹色グラデーションが一本でもあれば…✨ ★★★☆☆"
+        </div>
+    </section>
+</main>
+
+<footer>
+    // Designed by Codex — Function over form, always
+</footer>
+
+<script>
+    var books = [
+        { title: "Clean Code", author: "Robert C. Martin", original: 3200, sale: 320, discount: 90, genre: "プログラミング", ends: "2026-06-20" },
+        { title: "The Pragmatic Programmer", author: "Hunt & Thomas", original: 3800, sale: 760, discount: 80, genre: "プログラミング", ends: "2026-06-20" },
+        { title: "Design Patterns", author: "Gang of Four", original: 4500, sale: 900, discount: 80, genre: "プログラミング", ends: "2026-06-22" },
+        { title: "Atomic Habits", author: "James Clear", original: 1800, sale: 540, discount: 70, genre: "自己啓発", ends: "2026-06-18" },
+        { title: "The Mom Test", author: "Rob Fitzpatrick", original: 1500, sale: 750, discount: 50, genre: "ビジネス", ends: "2026-06-25" },
+        { title: "Thinking, Fast and Slow", author: "Daniel Kahneman", original: 2200, sale: 440, discount: 80, genre: "心理学", ends: "2026-06-19" },
+        { title: "Zero to One", author: "Peter Thiel", original: 1600, sale: 480, discount: 70, genre: "ビジネス", ends: "2026-06-21" },
+        { title: "Sapiens", author: "Yuval Noah Harari", original: 2400, sale: 240, discount: 90, genre: "歴史", ends: "2026-06-17" }
+    ];
+
+    function getDiscountBar(pct) {
+        var blocks = Math.floor(pct / 10);
+        var bar = "";
+        for(var i=0; i<blocks; i++) bar += "█";
+        if (pct % 10 >= 5) bar += "▉";
+        return bar.padEnd(10, "░");
+    }
+
+    function render(items) {
+        var body = document.getElementById("bookBody");
+        body.innerHTML = "";
+        items.forEach(function(b) {
+            var row = document.createElement("tr");
+            row.innerHTML = "<td>" + b.title + "</td>" +
+                            "<td>" + b.author + "</td>" +
+                            "<td>¥" + b.original.toLocaleString() + "</td>" +
+                            "<td>¥" + b.sale.toLocaleString() + "</td>" +
+                            "<td><span class='discount-bar'>" + getDiscountBar(b.discount) + "</span> " + b.discount + "%</td>" +
+                            "<td>" + b.genre + "</td>" +
+                            "<td>" + b.ends + "</td>";
+            body.appendChild(row);
+        });
+        
+        var totalSavings = items.reduce(function(acc, b) { return acc + (b.original - b.sale); }, 0);
+        var avgDiscount = items.length ? Math.round(items.reduce(function(acc, b) { return acc + b.discount; }, 0) / items.length) : 0;
+        document.getElementById("summaryLine").innerText = "計 " + items.length + "冊 | 総節約額: ¥" + totalSavings.toLocaleString() + " | 平均割引: " + avgDiscount + "%";
+    }
+
+    function filterBooks(min, btn) {
+        var btns = document.querySelectorAll(".filters button");
+        btns.forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        
+        var filtered = books.filter(function(b) { return b.discount >= min; });
+        render(filtered);
+    }
+
+    render(books);
+</script>
+
 </body>
 </html>
