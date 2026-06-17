@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import books, check, history, run, settings
+from app.api import scheduler as scheduler_api
 from app.auth import AuthMiddleware
 from app.config import settings as app_settings
 from app.database import Base, SessionLocal, engine, get_db
@@ -90,6 +91,7 @@ app.include_router(check.router)
 app.include_router(history.router)
 app.include_router(settings.router)
 app.include_router(run.router)
+app.include_router(scheduler_api.router)
 
 
 @app.get("/api/health")
@@ -340,7 +342,6 @@ def login_page(request: Request):
 async def create_session(request: Request):
     import firebase_admin
     from firebase_admin import auth as firebase_auth
-    import json
 
     if not firebase_admin._apps:
         firebase_admin.initialize_app()

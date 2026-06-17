@@ -1,8 +1,10 @@
+import asyncio
 import logging
-import time
+import threading
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Optional, cast
 
 import httpx
@@ -10,6 +12,64 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 
 logger = logging.getLogger(__name__)
+
+
+class ScrapeFailureCategory(Enum):
+    STRUCTURE_CHANGE = "STRUCTURE_CHANGE"
+    HTTP_ERROR = "HTTP_ERROR"
+    TIMEOUT = "TIMEOUT"
+    NETWORK = "NETWORK"
+    UNEXPECTED = "UNEXPECTED"
+
+
+@dataclass
+class PageOutcome:
+    url: str
+    ok: bool
+    items_count: int = 0
+    failure_category: Optional[ScrapeFailureCategory] = None
+    detail: Optional[str] = None
+
+
+@dataclass
+class ScrapeDiagnostics:
+    outcomes: list[PageOutcome] = field(default_factory=list)
+
+    @property
+    def failures(self) -> list[PageOutcome]:
+        return [o for o in self.outcomes if not o.ok]
+
+    @property
+    def structure_change_suspected(self) -> list[str]:
+        return [
+            o.url
+            for o in self.outcomes
+            if o.failure_category == ScrapeFailureCategory.STRUCTURE_CHANGE
+        ]
+
+
+def _run_coro(coro):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    # ループ実行中: 別スレッドで新しいループを回す
+    result = {}
+    error = {}
+
+    def runner():
+        try:
+            result["v"] = asyncio.run(coro)
+        except BaseException as e:  # noqa
+            error["e"] = e
+
+    t = threading.Thread(target=runner)
+    t.start()
+    t.join()
+    if "e" in error:
+        raise error["e"]
+    return result["v"]
+
 
 SALE_BON_BASE_URL = "https://www.sale-bon.com"
 SALE_BON_KINDLE_URL = "https://www.sale-bon.com/category/kindle"
@@ -194,39 +254,133 @@ def _parse_sale_bon_html(soup: BeautifulSoup, page_url: str) -> list[SaleItem]:
     return items
 
 
-def scrape_sale_bon_page(
+async def scrape_sale_bon_page_async(
     url: str,
-    client: httpx.Client,
+    client: httpx.AsyncClient,
     interval_seconds: int = 2,
     max_retries: int = 3,
     timeout: int = 30,
-) -> list[SaleItem]:
+) -> tuple[list[SaleItem], PageOutcome]:
+    outcome = PageOutcome(url=url, ok=False)
+    last_exception: Exception | None = None
+
     for attempt in range(max_retries):
         try:
             if attempt > 0:
                 wait_time = interval_seconds * (2 ** (attempt - 1))
                 logger.info(f"Retry {attempt} for {url}, waiting {wait_time}s")
-                time.sleep(wait_time)
+                await asyncio.sleep(wait_time)
 
-            response = client.get(url, timeout=timeout)
+            response = await client.get(url, timeout=timeout)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.text, "html.parser")
             items = _parse_sale_bon_html(soup, url)
-            logger.info(f"Scraped {len(items)} items from {url}")
-            return items
+
+            if not items:
+                outcome.ok = False
+                outcome.failure_category = ScrapeFailureCategory.STRUCTURE_CHANGE
+                outcome.detail = "fetched OK but 0 items parsed"
+                logger.warning(f"No items found for {url} - possible structure change")
+            else:
+                outcome.ok = True
+                outcome.items_count = len(items)
+                logger.info(f"Scraped {len(items)} items from {url}")
+
+            return items, outcome
 
         except httpx.HTTPStatusError as e:
+            last_exception = e
             logger.warning(f"HTTP error {e.response.status_code} for {url}")
             if e.response.status_code in (403, 404, 410):
-                return []
-        except httpx.TimeoutException:
+                outcome.failure_category = ScrapeFailureCategory.HTTP_ERROR
+                outcome.detail = f"HTTP {e.response.status_code}"
+                return [], outcome
+        except httpx.TimeoutException as e:
+            last_exception = e
             logger.warning(f"Timeout fetching {url} (attempt {attempt+1})")
+        except httpx.TransportError as e:
+            last_exception = e
+            logger.warning(f"Transport error fetching {url}: {e} (attempt {attempt+1})")
         except Exception as e:
+            last_exception = e
             logger.warning(f"Error fetching {url}: {e} (attempt {attempt+1})")
 
+    if last_exception:
+        if isinstance(last_exception, httpx.HTTPStatusError):
+            outcome.failure_category = ScrapeFailureCategory.HTTP_ERROR
+            outcome.detail = f"HTTP {last_exception.response.status_code}"
+        elif isinstance(last_exception, httpx.TimeoutException):
+            outcome.failure_category = ScrapeFailureCategory.TIMEOUT
+            outcome.detail = str(last_exception)
+        elif isinstance(last_exception, httpx.TransportError):
+            outcome.failure_category = ScrapeFailureCategory.NETWORK
+            outcome.detail = str(last_exception)
+        else:
+            outcome.failure_category = ScrapeFailureCategory.UNEXPECTED
+            outcome.detail = str(last_exception)
+
     logger.error(f"Failed to fetch {url} after {max_retries} retries")
-    return []
+    return [], outcome
+
+
+async def scrape_sale_bon_async(
+    books: list[Any] | None = None,
+    interval_seconds: int = 2,
+    max_retries: int = 3,
+    timeout: int = 30,
+    max_concurrency: int = 5,
+) -> tuple[list[SaleItem], ScrapeDiagnostics]:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; KindleSaleMonitor/1.0; +https://github.com/sota1111/kindle-sale-monitor)",
+        "Accept-Language": "ja,en;q=0.5",
+    }
+
+    semaphore = asyncio.Semaphore(max_concurrency)
+
+    async def fetch_with_semaphore(url, client):
+        async with semaphore:
+            items, outcome = await scrape_sale_bon_page_async(
+                url, client, interval_seconds, max_retries, timeout
+            )
+            # Polite pacing: sleep while holding semaphore
+            await asyncio.sleep(interval_seconds)
+            return items, outcome
+
+    urls_to_fetch = [SALE_BON_KINDLE_URL]
+    if books:
+        book_sale_bon_urls = [
+            b.sale_bon_url
+            for b in books
+            if getattr(b, "sale_bon_url", None) and getattr(b, "enabled", True)
+        ]
+        # Unique URLs while preserving order (excluding category URL if present)
+        seen_urls = {SALE_BON_KINDLE_URL}
+        for url in book_sale_bon_urls:
+            if url and url not in seen_urls:
+                urls_to_fetch.append(url)
+                seen_urls.add(url)
+
+    async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
+        tasks = [fetch_with_semaphore(url, client) for url in urls_to_fetch]
+        results = await asyncio.gather(*tasks)
+
+    all_items: list[SaleItem] = []
+    seen_asins: set[str] = set()
+    diagnostics = ScrapeDiagnostics()
+
+    for page_items, outcome in results:
+        diagnostics.outcomes.append(outcome)
+        for item in page_items:
+            if item.asin:
+                if item.asin not in seen_asins:
+                    seen_asins.add(item.asin)
+                    all_items.append(item)
+            else:
+                all_items.append(item)
+
+    logger.info(f"Total scraped items: {len(all_items)}")
+    return all_items, diagnostics
 
 
 def scrape_sale_bon(
@@ -235,48 +389,28 @@ def scrape_sale_bon(
     max_retries: int = 3,
     timeout: int = 30,
 ) -> list[SaleItem]:
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; KindleSaleMonitor/1.0; +https://github.com/sota1111/kindle-sale-monitor)",
-        "Accept-Language": "ja,en;q=0.5",
-    }
+    items, _ = _run_coro(
+        scrape_sale_bon_async(
+            books=books,
+            interval_seconds=interval_seconds,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+    )
+    return items
 
-    all_items: list[SaleItem] = []
-    seen_asins: set[str] = set()
 
-    with httpx.Client(headers=headers, follow_redirects=True) as client:
-        try:
-            category_items = scrape_sale_bon_page(
-                SALE_BON_KINDLE_URL, client, interval_seconds, max_retries, timeout
-            )
-            for item in category_items:
-                if item.asin and item.asin not in seen_asins:
-                    seen_asins.add(item.asin)
-                    all_items.append(item)
-                elif not item.asin:
-                    all_items.append(item)
-            time.sleep(interval_seconds)
-        except Exception as e:
-            logger.error(f"Failed to scrape category page: {e}")
-
-        if books:
-            book_sale_bon_urls = [
-                b.sale_bon_url for b in books
-                if getattr(b, "sale_bon_url", None) and getattr(b, "enabled", True)
-            ]
-            for url in set(url for url in book_sale_bon_urls if url):
-                try:
-                    page_items = scrape_sale_bon_page(
-                        url, client, interval_seconds, max_retries, timeout
-                    )
-                    for item in page_items:
-                        if item.asin and item.asin not in seen_asins:
-                            seen_asins.add(item.asin)
-                            all_items.append(item)
-                        elif not item.asin:
-                            all_items.append(item)
-                    time.sleep(interval_seconds)
-                except Exception as e:
-                    logger.error(f"Failed to scrape {url}: {e}")
-
-    logger.info(f"Total scraped items: {len(all_items)}")
-    return all_items
+def scrape_sale_bon_with_diagnostics(
+    books: list[Any] | None = None,
+    interval_seconds: int = 2,
+    max_retries: int = 3,
+    timeout: int = 30,
+) -> tuple[list[SaleItem], ScrapeDiagnostics]:
+    return _run_coro(
+        scrape_sale_bon_async(
+            books=books,
+            interval_seconds=interval_seconds,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+    )

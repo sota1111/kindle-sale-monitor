@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -29,15 +27,8 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def login_client():
-    os.environ["AUTH_USERNAME"] = "test-user"
-    os.environ["AUTH_PASSWORD"] = "test-password"
-    response = client.post(
-        "/login",
-        data={"username": "test-user", "password": "test-password"},
-        follow_redirects=False,
-    )
-    assert response.status_code == 303
+def bypass_auth(monkeypatch):
+    monkeypatch.setattr("app.auth._is_exempt", lambda path: True)
 
 
 def test_health():
