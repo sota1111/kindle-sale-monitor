@@ -2,7 +2,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-EXEMPT_PATHS = {"/login", "/logout", "/run", "/api/health", "/healthz"}
+EXEMPT_PATHS = {"/login", "/session", "/logout", "/run", "/api/health", "/healthz"}
 
 
 def _is_exempt(path: str) -> bool:
