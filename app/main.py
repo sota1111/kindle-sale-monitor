@@ -1,10 +1,12 @@
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
 from typing import Optional
 
+import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
@@ -49,6 +51,7 @@ def _init_default_settings():
     finally:
         db.close()
 
+
 _init_default_settings()
 
 
@@ -83,6 +86,8 @@ app.add_middleware(AuthMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("AUTH_SECRET", "change-this-secret"),
+    https_only=True,
+    same_site="lax",
 )
 templates = Jinja2Templates(directory="app/templates")
 
@@ -138,9 +143,9 @@ def books_page(request: Request, enabled: Optional[str] = None, db: Session = De
 
     # Add condition summaries to books
     book_ids = [b.id for b in books]
-    conditions_raw = db.query(NotificationCondition).filter(
-        NotificationCondition.book_id.in_(book_ids)
-    ).all()
+    conditions_raw = (
+        db.query(NotificationCondition).filter(NotificationCondition.book_id.in_(book_ids)).all()
+    )
     condition_map: dict = {}
     for c in conditions_raw:
         if c.book_id not in condition_map:
@@ -213,9 +218,9 @@ def book_detail_page(book_id: int, request: Request, db: Session = Depends(get_d
         .limit(50)
         .all()
     )
-    conditions = db.query(NotificationCondition).filter(
-        NotificationCondition.book_id == book_id
-    ).all()
+    conditions = (
+        db.query(NotificationCondition).filter(NotificationCondition.book_id == book_id).all()
+    )
     return templates.TemplateResponse(
         request, "book_detail.html", {"book": book, "sales": sales, "conditions": conditions}
     )
@@ -297,12 +302,15 @@ def monitoring_page(request: Request, db: Session = Depends(get_db)):
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request, db: Session = Depends(get_db)):
     from app.models.settings import AppSettings
+
     setting_list = db.query(AppSettings).all()
     return templates.TemplateResponse(request, "settings.html", {"settings": setting_list})
+
 
 @app.post("/settings")
 async def settings_update_form(request: Request, db: Session = Depends(get_db)):
     from app.models.settings import AppSettings
+
     form_data = await request.form()
     for key, value in form_data.items():
         setting = db.query(AppSettings).filter(AppSettings.key == key).first()
@@ -313,6 +321,7 @@ async def settings_update_form(request: Request, db: Session = Depends(get_db)):
     db.commit()
     try:
         from app.services.scheduler import update_interval
+
         interval_val = form_data.get("check_interval_hours")
         if interval_val:
             update_interval(int(str(interval_val)))
@@ -321,51 +330,104 @@ async def settings_update_form(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url="/settings", status_code=303)
 
 
-
 @app.get("/errors", response_class=HTMLResponse)
 def error_logs_page(request: Request, db: Session = Depends(get_db)):
     errors = db.query(ErrorLog).order_by(ErrorLog.occurred_at.desc()).limit(100).all()
     return templates.TemplateResponse(request, "error_logs.html", {"errors": errors})
 
 
+# Identity Toolkit REST endpoint for server-side email/password verification (案1).
+# The browser never talks to Firebase directly; the server verifies credentials
+# using the Firebase Web API key held server-side.
+IDENTITY_TOOLKIT_SIGNIN_URL = (
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
+)
+_INVALID_CREDENTIALS_MSG = "メールアドレスまたはパスワードが正しくありません"
+
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {
-        "firebase_api_key": os.environ.get("FIREBASE_API_KEY", ""),
-        "firebase_auth_domain": os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
-        "firebase_project_id": os.environ.get("FIREBASE_PROJECT_ID", ""),
-        "firebase_app_id": os.environ.get("FIREBASE_APP_ID", ""),
-    })
+    # Double-submit CSRF token: set as a non-HttpOnly cookie so the login script
+    # can read it and echo it back in the X-CSRF-Token header.
+    csrf_token = secrets.token_urlsafe(32)
+    response = templates.TemplateResponse(request, "login.html", {"csrf_token": csrf_token})
+    response.set_cookie(
+        "csrf_token",
+        csrf_token,
+        max_age=3600,
+        httponly=False,
+        secure=True,
+        samesite="lax",
+    )
+    return response
 
 
 @app.post("/session")
 async def create_session(request: Request):
-    import firebase_admin
-    from firebase_admin import auth as firebase_auth
+    # CSRF check (double-submit cookie): the cookie set on /login must match the
+    # value echoed back in the X-CSRF-Token header.
+    cookie_token = request.cookies.get("csrf_token", "")
+    header_token = request.headers.get("x-csrf-token", "")
+    if (
+        not cookie_token
+        or not header_token
+        or not secrets.compare_digest(cookie_token, header_token)
+    ):
+        return JSONResponse(content={"error": "Invalid CSRF token"}, status_code=403)
 
-    if not firebase_admin._apps:
-        firebase_admin.initialize_app()
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(content={"error": _INVALID_CREDENTIALS_MSG}, status_code=401)
 
-    body = await request.json()
-    id_token = body.get("idToken", "")
+    email = (body.get("email") or "").strip()
+    password = body.get("password") or ""
+    if not email or not password:
+        return JSONResponse(content={"error": _INVALID_CREDENTIALS_MSG}, status_code=401)
+
+    api_key = os.environ.get("FIREBASE_API_KEY", "")
+    if not api_key:
+        logging.error("FIREBASE_API_KEY is not configured")
+        return JSONResponse(content={"error": "サーバ設定エラーです"}, status_code=500)
+
+    # Verify credentials server-side. Never log the password or request body.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http_client:
+            resp = await http_client.post(
+                IDENTITY_TOOLKIT_SIGNIN_URL,
+                params={"key": api_key},
+                json={"email": email, "password": password, "returnSecureToken": True},
+            )
+    except httpx.HTTPError:
+        logging.warning("Identity Toolkit request failed during login")
+        return JSONResponse(
+            content={"error": "認証サービスに接続できませんでした"}, status_code=503
+        )
+
+    if resp.status_code != 200:
+        error_code = ""
+        try:
+            error_code = resp.json().get("error", {}).get("message", "")
+        except Exception:
+            error_code = ""
+        if error_code.startswith("TOO_MANY_ATTEMPTS_TRY_LATER"):
+            return JSONResponse(
+                content={"error": "ログイン試行が多すぎます。しばらく待ってから再試行してください"},
+                status_code=401,
+            )
+        return JSONResponse(content={"error": _INVALID_CREDENTIALS_MSG}, status_code=401)
+
+    verified_email = (resp.json().get("email") or email).strip()
 
     allowed_emails_str = os.environ.get("ALLOWED_USER_EMAILS", "")
     allowed_emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
+    if allowed_emails and verified_email not in allowed_emails:
+        return JSONResponse(
+            content={"error": "このメールアドレスは許可されていません"}, status_code=403
+        )
 
-    try:
-        decoded = firebase_auth.verify_id_token(id_token)
-        email = decoded.get("email", "")
-    except Exception:
-        from fastapi.responses import JSONResponse as FR
-        return FR(content={"error": "Invalid token"}, status_code=401)
-
-    if allowed_emails and email not in allowed_emails:
-        from fastapi.responses import JSONResponse as FR
-        return FR(content={"error": "Email not allowed"}, status_code=403)
-
-    request.session["user"] = email
-    from fastapi.responses import JSONResponse as FR
-    return FR(content={"success": True, "email": email})
+    request.session["user"] = verified_email
+    return JSONResponse(content={"success": True, "email": verified_email})
 
 
 @app.post("/logout")

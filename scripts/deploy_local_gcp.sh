@@ -40,12 +40,23 @@ gcloud builds submit . \
 
 # Secret Manager: 初回デプロイ前に以下を実行してください
 # echo -n "value" | gcloud secrets create kindle-monitor-auth-secret --data-file=- --project=$PROJECT_ID
+# echo -n "value" | gcloud secrets create kindle-monitor-firebase-api-key --data-file=- --project=$PROJECT_ID
 # gcloud run services add-iam-policy-binding kindle-sale-monitor \
 #   --member="serviceAccount:$(gcloud run services describe kindle-sale-monitor --region=$REGION --project=$PROJECT_ID --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || echo PROJECT_NUMBER-compute@developer.gserviceaccount.com)" \
 #   --role="roles/secretmanager.secretAccessor" --region=$REGION --project=$PROJECT_ID
+#
+# 案1（サーバサイドREST認証）でのアクセス到達について:
+#   このサービスは --no-allow-unauthenticated でデプロイされる（Cloud Run IAM保護）。
+#   自前の /login ページにブラウザから到達させるには、以下のいずれかでアクセスを許可する:
+#     A) 公開する場合:
+#        gcloud run services add-iam-policy-binding kindle-sale-monitor \
+#          --member="allUsers" --role="roles/run.invoker" --region=$REGION --project=$PROJECT_ID
+#        （アプリ側で /login・/session 以外は session 必須のため、認証はアプリ層で担保される）
+#     B) 利用者を限定する場合: --member="user:your-email@example.com" 等で run.invoker を付与。
+#   どちらを採用するかは運用方針に依存するため、このスクリプトでは自動変更しない。
 
 # Build --set-secrets string
-SET_SECRETS="AUTH_SECRET=kindle-monitor-auth-secret:latest"
+SET_SECRETS="AUTH_SECRET=kindle-monitor-auth-secret:latest,FIREBASE_API_KEY=kindle-monitor-firebase-api-key:latest"
 
 if [ -n "${DISCORD_WEBHOOK_URL:-}" ]; then
   # ローカルでの動作確認用: Cloud Runでは Secret Manager から取得
