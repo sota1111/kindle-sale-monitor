@@ -340,7 +340,6 @@ def login_page(request: Request):
 async def create_session(request: Request):
     import firebase_admin
     from firebase_admin import auth as firebase_auth
-    import json
 
     if not firebase_admin._apps:
         firebase_admin.initialize_app()

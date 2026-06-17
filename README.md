@@ -27,19 +27,17 @@ Cloud Scheduler (cron: 0 * * * *)
 
 ### 必要なもの
 - Python 3.11+
-- pip（またはDocker）
+- [uv](https://docs.astral.sh/uv/) (推奨) または Python 3.11+ と pip
 
 ### 手順
 
-\`\`\`bash
+```bash
 # 1. リポジトリのクローン
 git clone https://github.com/sota1111/kindle-sale-monitor.git
 cd kindle-sale-monitor
 
-# 2. 仮想環境と依存パッケージ
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# 2. 依存パッケージのインストール (uv使用の場合)
+uv sync
 
 # 3. 最小設定（認証情報なし）
 cp .env.example .env
@@ -49,7 +47,8 @@ cp .env.example .env
 cp wishlist.example.json wishlist.json
 
 # 5. 起動
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
 # 6. 動作確認
 curl http://localhost:8000/healthz        # ヘルスチェック
@@ -97,22 +96,20 @@ Firebase Console > プロジェクト設定 > アプリ から取得してくだ
 ### 前提条件
 
 - Python 3.11+
-- pip
+- [uv](https://docs.astral.sh/uv/)
 
 ### 1. リポジトリのクローン
 
-\`\`\`bash
+```bash
 git clone https://github.com/sota1111/kindle-sale-monitor.git
 cd kindle-sale-monitor
-\`\`\`
+```
 
-### 2. 仮想環境と依存パッケージ
+### 2. 依存パッケージのインストール
 
-\`\`\`bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-\`\`\`
+```bash
+uv sync
+```
 
 ### 3. 環境変数の設定
 
@@ -135,9 +132,9 @@ cp wishlist.example.json wishlist.json
 
 ### 5. アプリの起動
 
-\`\`\`bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-\`\`\`
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
 管理画面: http://localhost:8000
 
