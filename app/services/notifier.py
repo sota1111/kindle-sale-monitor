@@ -78,3 +78,55 @@ sale-bon: {sale_history.sale_bon_url or ""}
         db.add(notif_record)
         db.commit()
         return False
+
+
+def send_scrape_failure_notification(
+    failures: list[tuple[str, str, str]], db: Session | None = None
+) -> bool:
+    """Send summary of scraping failures to Discord. Returns True on success."""
+    from app.config import settings
+
+    if not settings.discord_webhook_url:
+        logger.warning("DISCORD_WEBHOOK_URL not set, skipping failure notification")
+        return False
+
+    if not failures:
+        return True
+
+    failure_lines = []
+    for category, url, detail in failures:
+        action = ""
+        if category == "STRUCTURE_CHANGE":
+            action = "推奨アクション: sale-bon のHTML構造変更の可能性。セレクタ確認をしてください。"
+        elif category == "HTTP_ERROR":
+            action = "推奨アクション: 対象URLの有効性またはレート制限を確認してください。"
+        elif category in ("TIMEOUT", "NETWORK"):
+            action = "推奨アクション: ネットワーク接続と対象サイトの稼働状況を確認してください。"
+        else:
+            action = "推奨アクション: ログを確認し、予期しないエラーの原因を調査してください。"
+
+        failure_lines.append(f"・分類: {category}\n  URL: {url}\n  詳細: {detail}\n  {action}")
+
+    failure_details = "\n".join(failure_lines)
+
+    message = f"""【Kindle セールモニター スクレイピング失敗通知】
+一部またはすべてのページのスクレイピングに失敗しました。
+
+{failure_details}
+
+※ 同一実行内の失敗をまとめて通知しています。"""
+
+    try:
+        import httpx
+
+        resp = httpx.post(
+            settings.discord_webhook_url,
+            json={"content": message},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        logger.info("Scraping failure notification sent")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send failure notification: {e}")
+        return False

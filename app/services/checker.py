@@ -86,7 +86,6 @@ def run_check_all(db: Session) -> dict:
     from app.config import settings
     from app.services.matcher import match_books
     from app.services.notifier import send_notification
-    from app.services.scraper import scrape_sale_bon
 
     started_at = datetime.now(timezone.utc)
     monitor_log = MonitorLog(started_at=started_at, status="running")
@@ -131,12 +130,49 @@ def run_check_all(db: Session) -> dict:
                 else settings.max_retries
             )
 
-            sale_items = scrape_sale_bon(
+            from app.services.scraper import scrape_sale_bon_with_diagnostics
+
+            sale_items, diagnostics = scrape_sale_bon_with_diagnostics(
                 books=books,
                 interval_seconds=interval,
                 max_retries=max_retries,
                 timeout=settings.request_timeout_seconds,
             )
+
+            if diagnostics.failures:
+                from app.services.notifier import send_scrape_failure_notification
+
+                failure_info = []
+                for outcome in diagnostics.failures:
+                    category_name = (
+                        outcome.failure_category.value
+                        if outcome.failure_category
+                        else "UNEXPECTED"
+                    )
+                    _record_error(
+                        db,
+                        outcome.url,
+                        error_type=category_name,
+                        error_msg=outcome.detail or "Unknown error",
+                    )
+                    failure_info.append(
+                        (category_name, outcome.url, outcome.detail or "Unknown error")
+                    )
+
+                send_scrape_failure_notification(failure_info, db=db)
+
+                if len(diagnostics.failures) == len(diagnostics.outcomes) and not sale_items:
+                    monitor_log.status = "failed"
+                    monitor_log.error_message = "All scraping pages failed"
+                    monitor_log.finished_at = datetime.now(timezone.utc)
+                    db.commit()
+                    return {
+                        "books_checked": books_checked,
+                        "sales_found": 0,
+                        "notified": 0,
+                        "error": "All scraping pages failed",
+                    }
+
         except Exception as e:
             logger.error(f"Scraping failed: {e}")
             _record_error(db, None, "ScrapingError", str(e), traceback.format_exc())
