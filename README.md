@@ -275,6 +275,30 @@ cp wishlist.example.json wishlist.json
 
 Firestore に一括登録する場合は、GCPコンソールの Firestore 画面から `books` コレクションに各エントリを手動で追加するか、Admin SDK を使用してください。
 
+## Cloud Run デプロイ (GitHub Actions)
+
+`main` ブランチへの push（および手動の `workflow_dispatch`）をトリガーに、GitHub Actions が
+Docker イメージをビルドして Artifact Registry へ push し、Cloud Run へ自動デプロイします
+（`.github/workflows/deploy-cloudrun.yml`）。
+
+- 認証は **Workload Identity Federation** を使用し、JSON サービスアカウントキーは使いません。
+- workflow の権限は `contents: read` / `id-token: write` に限定しています。
+- フロー: Docker build → Artifact Registry push → `gcloud run deploy`。
+
+### 必要な GitHub Secrets
+
+リポジトリの Settings → Secrets and variables → Actions に以下を登録してください。
+
+| Secret | 説明 |
+| --- | --- |
+| `GCP_PROJECT_ID` | GCP プロジェクト ID |
+| `GCP_PROJECT_NUMBER` | GCP プロジェクト番号 |
+| `GCP_REGION` | デプロイ先リージョン（Artifact Registry / Cloud Run） |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity プロバイダのリソース名 |
+| `GCP_SERVICE_ACCOUNT` | デプロイに使うサービスアカウント |
+| `ARTIFACT_REGISTRY_REPOSITORY` | Artifact Registry リポジトリ名 |
+| `CLOUD_RUN_SERVICE` | Cloud Run サービス名（`kindle-sale-monitor`） |
+
 ## Discord通知の設定
 
 1. Discordサーバーの「サーバー設定」→「連携サービス」→「Webhook」→「新しいWebhookを作成」
