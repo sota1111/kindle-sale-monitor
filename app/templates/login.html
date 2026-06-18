@@ -17,66 +17,27 @@
              border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
     button:hover { background: #555; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .error { color: #c00; font-size: 0.9rem; margin-bottom: 1rem; }
+    .error { color: #c00; font-size: 0.9rem; margin-bottom: 1rem;
+             background: #ffebee; border: 1px solid #ffcdd2; padding: 0.5rem; border-radius: 4px; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Kindle Sale Monitor</h1>
-    <p id="error" class="error" style="display:none"></p>
-    <form id="loginForm">
+    
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="/login">
       <label for="email">メールアドレス</label>
       <input type="email" id="email" name="email" required autofocus placeholder="your-email@example.com">
+      
       <label for="password">パスワード</label>
       <input type="password" id="password" name="password" required placeholder="パスワードを入力">
-      <button type="submit" id="submitBtn">ログイン</button>
+      
+      <button type="submit">ログイン</button>
     </form>
   </div>
-  <script>
-    // 案1: own email/password form. The browser posts credentials to the server,
-    // which verifies them via Firebase Identity Toolkit REST. No Firebase SDK here.
-    function getCookie(name) {
-      const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-      return match ? decodeURIComponent(match[1]) : '';
-    }
-
-    const form = document.getElementById('loginForm');
-    const errorEl = document.getElementById('error');
-    const submitBtn = document.getElementById('submitBtn');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorEl.style.display = 'none';
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'ログイン中...';
-
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      try {
-        const res = await fetch('/session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': getCookie('csrf_token'),
-          },
-          body: JSON.stringify({ email, password }),
-        });
-        if (res.ok) {
-          window.location.href = '/';
-        } else {
-          const data = await res.json().catch(() => ({}));
-          errorEl.textContent = data.error || 'ログインに失敗しました';
-          errorEl.style.display = 'block';
-        }
-      } catch (err) {
-        errorEl.textContent = 'ログインに失敗しました';
-        errorEl.style.display = 'block';
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'ログイン';
-      }
-    });
-  </script>
 </body>
 </html>
