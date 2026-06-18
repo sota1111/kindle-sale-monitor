@@ -60,6 +60,24 @@ async def lifespan(app: FastAPI):
     from app.models.settings import AppSettings
     from app.services.scheduler import start_scheduler
 
+    # Auth-config check: log each missing auth setting distinctly so that
+    # misconfiguration is visible in Cloud Run logs at boot time.
+    firebase_api_key = os.environ.get("FIREBASE_WEB_API_KEY") or os.environ.get("FIREBASE_API_KEY")
+    auth_secret = os.environ.get("AUTH_SECRET")
+    allowed_emails = os.environ.get("ALLOWED_USER_EMAILS")
+    auth_missing = False
+    if not firebase_api_key:
+        logging.warning("FIREBASE_WEB_API_KEY / FIREBASE_API_KEY not configured")
+        auth_missing = True
+    if not auth_secret:
+        logging.warning("AUTH_SECRET not configured")
+        auth_missing = True
+    if not allowed_emails:
+        logging.warning("ALLOWED_USER_EMAILS not configured")
+        auth_missing = True
+    if not auth_missing:
+        logging.info("auth config OK")
+
     db = SessionLocal()
     try:
         interval_setting = (
@@ -389,9 +407,13 @@ async def login_post(
     request: Request, email: str = Form(...), password: str = Form(...)
 ):
     email = email.strip()
-    api_key = os.environ.get("FIREBASE_API_KEY", "")
+    api_key = (
+        os.environ.get("FIREBASE_WEB_API_KEY")
+        or os.environ.get("FIREBASE_API_KEY")
+        or ""
+    )
     if not api_key:
-        logging.error("FIREBASE_API_KEY is not configured")
+        logging.error("FIREBASE_WEB_API_KEY / FIREBASE_API_KEY is not configured")
         return templates.TemplateResponse(
             request, "login.html", {"error": "サーバ設定エラーです"}, status_code=500
         )
