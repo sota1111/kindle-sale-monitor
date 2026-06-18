@@ -46,14 +46,11 @@ gcloud builds submit . \
 #   --role="roles/secretmanager.secretAccessor" --region=$REGION --project=$PROJECT_ID
 #
 # 案1（サーバサイドREST認証）でのアクセス到達について:
-#   このサービスは --no-allow-unauthenticated でデプロイされる（Cloud Run IAM保護）。
-#   自前の /login ページにブラウザから到達させるには、以下のいずれかでアクセスを許可する:
-#     A) 公開する場合:
-#        gcloud run services add-iam-policy-binding kindle-sale-monitor \
-#          --member="allUsers" --role="roles/run.invoker" --region=$REGION --project=$PROJECT_ID
-#        （アプリ側で /login・/session 以外は session 必須のため、認証はアプリ層で担保される）
-#     B) 利用者を限定する場合: --member="user:your-email@example.com" 等で run.invoker を付与。
-#   どちらを採用するかは運用方針に依存するため、このスクリプトでは自動変更しない。
+#   このサービスは --allow-unauthenticated でデプロイされ、Cloud Run IAMは手前で遮断しない。
+#   認可はアプリ層で担保する: /login 以外のパスは session cookie 必須（app/auth.py）、
+#   ログイン自体は Firebase Identity Toolkit REST でメール/パスワードを検証し、
+#   ALLOWED_USER_EMAILS に含まれるメールのみ通過させる。
+#   これにより自前の /login ページにブラウザから到達でき、認可はアプリ側で完結する。
 
 # Build --set-secrets string
 SET_SECRETS="AUTH_SECRET=kindle-monitor-auth-secret:latest,FIREBASE_API_KEY=kindle-monitor-firebase-api-key:latest"
@@ -68,8 +65,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
   --platform=managed \
-  --no-allow-unauthenticated \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT},LOG_LEVEL=${LOG_LEVEL:-INFO},CHECK_INTERVAL_HOURS=${CHECK_INTERVAL_HOURS:-12},PORT=8080" \
+  --allow-unauthenticated \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT},LOG_LEVEL=${LOG_LEVEL:-INFO},CHECK_INTERVAL_HOURS=${CHECK_INTERVAL_HOURS:-12},PORT=8080,ALLOWED_USER_EMAILS=${ALLOWED_USER_EMAILS:-}" \
   --set-secrets="${SET_SECRETS}" \
   --memory=512Mi \
   --timeout=300 \

@@ -64,21 +64,17 @@ curl -X POST http://localhost:8000/run    # 監視処理実行（通知なし）
 このアプリは Firebase Authentication を使用したログイン認証が必要です。`.env` に以下の変数を設定してください。
 
 ### Firebase 設定
-Firebase Console > プロジェクト設定 > アプリ から取得してください。
+Firebase Console > プロジェクト設定 > 全般 > ウェブ API キー から取得してください。
 
 | 変数名 | 説明 |
 |--------|------|
-| FIREBASE_API_KEY | Firebase API キー |
-| FIREBASE_AUTH_DOMAIN | Firebase 認証ドメイン |
-| FIREBASE_PROJECT_ID | Firebase プロジェクト ID |
-| FIREBASE_APP_ID | Firebase アプリ ID |
+| FIREBASE_API_KEY | Firebase Web API キー |
 
 ### ユーザー制御
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
 | ALLOWED_USER_EMAILS | ログインを許可するメールアドレス（カンマ区切り） | `your-email@example.com` |
 | AUTH_SECRET | セッション署名キー（必ず変更してください） | `random-secret-string` |
-| GOOGLE_CLOUD_PROJECT | Firebase Admin SDK 用のプロジェクト ID | `your-project-id` |
 
 ### 動作確認方法
 

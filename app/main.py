@@ -1,12 +1,11 @@
 import logging
 import os
-import secrets
 from contextlib import asynccontextmanager
 from typing import Optional
 
 import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
@@ -345,52 +344,11 @@ IDENTITY_TOOLKIT_SIGNIN_URL = (
 _INVALID_CREDENTIALS_MSG = "メールアドレスまたはパスワードが正しくありません"
 
 
-@app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    # Double-submit CSRF token: set as a non-HttpOnly cookie so the login script
-    # can read it and echo it back in the X-CSRF-Token header.
-    csrf_token = secrets.token_urlsafe(32)
-    response = templates.TemplateResponse(request, "login.html", {"csrf_token": csrf_token})
-    response.set_cookie(
-        "csrf_token",
-        csrf_token,
-        max_age=3600,
-        httponly=False,
-        secure=True,
-        samesite="lax",
-    )
-    return response
-
-
-@app.post("/session")
-async def create_session(request: Request):
-    # CSRF check (double-submit cookie): the cookie set on /login must match the
-    # value echoed back in the X-CSRF-Token header.
-    cookie_token = request.cookies.get("csrf_token", "")
-    header_token = request.headers.get("x-csrf-token", "")
-    if (
-        not cookie_token
-        or not header_token
-        or not secrets.compare_digest(cookie_token, header_token)
-    ):
-        return JSONResponse(content={"error": "Invalid CSRF token"}, status_code=403)
-
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse(content={"error": _INVALID_CREDENTIALS_MSG}, status_code=401)
-
-    email = (body.get("email") or "").strip()
-    password = body.get("password") or ""
-    if not email or not password:
-        return JSONResponse(content={"error": _INVALID_CREDENTIALS_MSG}, status_code=401)
-
-    api_key = os.environ.get("FIREBASE_API_KEY", "")
-    if not api_key:
-        logging.error("FIREBASE_API_KEY is not configured")
-        return JSONResponse(content={"error": "サーバ設定エラーです"}, status_code=500)
-
-    # Verify credentials server-side. Never log the password or request body.
+async def _verify_with_firebase(email: str, password: str, api_key: str) -> str:
+    """
+    Verify credentials with Firebase Identity Toolkit REST API.
+    Returns the verified email on success, or raises HTTPException on failure.
+    """
     try:
         async with httpx.AsyncClient(timeout=10.0) as http_client:
             resp = await http_client.post(
@@ -400,34 +358,63 @@ async def create_session(request: Request):
             )
     except httpx.HTTPError:
         logging.warning("Identity Toolkit request failed during login")
-        return JSONResponse(
-            content={"error": "認証サービスに接続できませんでした"}, status_code=503
+        raise HTTPException(status_code=503, detail="認証サービスに接続できませんでした")
+
+    if resp.status_code == 200:
+        return resp.json().get("email", email)
+
+    error_message = ""
+    try:
+        error_message = resp.json().get("error", {}).get("message", "")
+    except Exception:
+        pass
+
+    if error_message.startswith("TOO_MANY_ATTEMPTS_TRY_LATER"):
+        raise HTTPException(
+            status_code=401, detail="ログイン試行が多すぎます。しばらく待ってから再試行してください"
+        )
+    if error_message in ("EMAIL_NOT_FOUND", "INVALID_PASSWORD", "INVALID_LOGIN_CREDENTIALS"):
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS_MSG)
+
+    raise HTTPException(status_code=401, detail="認証に失敗しました")
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, error: Optional[str] = None):
+    return templates.TemplateResponse(request, "login.html", {"error": error})
+
+
+@app.post("/login")
+async def login_post(
+    request: Request, email: str = Form(...), password: str = Form(...)
+):
+    email = email.strip()
+    api_key = os.environ.get("FIREBASE_API_KEY", "")
+    if not api_key:
+        logging.error("FIREBASE_API_KEY is not configured")
+        return templates.TemplateResponse(
+            request, "login.html", {"error": "サーバ設定エラーです"}, status_code=500
         )
 
-    if resp.status_code != 200:
-        error_code = ""
-        try:
-            error_code = resp.json().get("error", {}).get("message", "")
-        except Exception:
-            error_code = ""
-        if error_code.startswith("TOO_MANY_ATTEMPTS_TRY_LATER"):
-            return JSONResponse(
-                content={"error": "ログイン試行が多すぎます。しばらく待ってから再試行してください"},
-                status_code=401,
-            )
-        return JSONResponse(content={"error": _INVALID_CREDENTIALS_MSG}, status_code=401)
-
-    verified_email = (resp.json().get("email") or email).strip()
+    try:
+        verified_email = await _verify_with_firebase(email, password, api_key)
+    except HTTPException as e:
+        return templates.TemplateResponse(
+            request, "login.html", {"error": e.detail}, status_code=e.status_code
+        )
 
     allowed_emails_str = os.environ.get("ALLOWED_USER_EMAILS", "")
     allowed_emails = [e.strip() for e in allowed_emails_str.split(",") if e.strip()]
     if allowed_emails and verified_email not in allowed_emails:
-        return JSONResponse(
-            content={"error": "このメールアドレスは許可されていません"}, status_code=403
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"error": "このメールアドレスは許可されていません"},
+            status_code=403,
         )
 
     request.session["user"] = verified_email
-    return JSONResponse(content={"success": True, "email": verified_email})
+    return RedirectResponse(url="/", status_code=303)
 
 
 @app.post("/logout")

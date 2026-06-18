@@ -1,6 +1,6 @@
-"""Tests for 案1 server-side email/password login (SOT-741).
+"""Tests for 案1 server-side email/password login.
 
-The browser posts email+password to ``POST /session``; the server verifies via
+The browser posts email+password as Form data to ``POST /login``; the server verifies via
 Firebase Identity Toolkit REST. The Identity Toolkit HTTP call is mocked — no
 real network access.
 """
@@ -11,8 +11,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-
-CSRF = "test-csrf-token"
 
 
 def _patch_identity_toolkit(monkeypatch, *, status_code=200, payload=None, raise_error=False):
@@ -47,75 +45,60 @@ def _patch_identity_toolkit(monkeypatch, *, status_code=200, payload=None, raise
 def client(monkeypatch):
     monkeypatch.setenv("FIREBASE_API_KEY", "test-api-key")
     monkeypatch.setenv("ALLOWED_USER_EMAILS", "allowed@example.com")
+    monkeypatch.setenv("AUTH_SECRET", "test-secret")
     c = TestClient(app)
-    c.cookies.set("csrf_token", CSRF)
     return c
 
 
-def _post(client, body, *, csrf=CSRF):
-    headers = {"X-CSRF-Token": csrf} if csrf is not None else {}
-    return client.post("/session", json=body, headers=headers)
+def _post(client, data):
+    # follow_redirects=False to check the 303/302 response
+    return client.post("/login", data=data, follow_redirects=False)
 
 
-def test_login_get_sets_csrf_cookie():
-    c = TestClient(app)
-    resp = c.get("/login")
+def test_login_page_get(client):
+    resp = client.get("/login")
     assert resp.status_code == 200
-    assert "csrf_token" in resp.cookies
-    # No Firebase SDK / signInWithEmailAndPassword in the served page.
-    assert "signInWithEmailAndPassword" not in resp.text
-    assert "gstatic.com/firebasejs" not in resp.text
+    assert "Kindle Sale Monitor" in resp.text
 
 
-def test_login_success_sets_session(client, monkeypatch):
-    captured = _patch_identity_toolkit(
+def test_login_success_redirects_to_dashboard(client, monkeypatch):
+    _patch_identity_toolkit(
         monkeypatch, status_code=200, payload={"email": "allowed@example.com"}
     )
     resp = _post(client, {"email": "allowed@example.com", "password": "secret"})
-    assert resp.status_code == 200
-    assert resp.json()["success"] is True
-    # password was sent to Identity Toolkit, not logged; request shaped correctly.
-    assert captured["params"] == {"key": "test-api-key"}
-    assert captured["json"]["returnSecureToken"] is True
+    # Success: Redirect to / (303)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/"
 
 
-def test_login_wrong_password_is_generic_401(client, monkeypatch):
+def test_login_wrong_password_shows_error(client, monkeypatch):
     _patch_identity_toolkit(
         monkeypatch,
         status_code=400,
         payload={"error": {"message": "INVALID_LOGIN_CREDENTIALS"}},
     )
     resp = _post(client, {"email": "allowed@example.com", "password": "wrong"})
+    # Failure: Re-render login page with 401
     assert resp.status_code == 401
-    assert resp.json()["error"] == "メールアドレスまたはパスワードが正しくありません"
+    assert "メールアドレスまたはパスワードが正しくありません" in resp.text
 
 
-def test_login_email_not_allowed_is_403(client, monkeypatch):
+def test_login_email_not_allowed_shows_error(client, monkeypatch):
     _patch_identity_toolkit(monkeypatch, status_code=200, payload={"email": "intruder@example.com"})
     resp = _post(client, {"email": "intruder@example.com", "password": "secret"})
+    # Failure: Re-render login page with 403
     assert resp.status_code == 403
-
-
-def test_login_missing_csrf_is_403(client, monkeypatch):
-    _patch_identity_toolkit(monkeypatch, status_code=200, payload={"email": "allowed@example.com"})
-    resp = _post(client, {"email": "allowed@example.com", "password": "secret"}, csrf=None)
-    assert resp.status_code == 403
-
-
-def test_login_mismatched_csrf_is_403(client, monkeypatch):
-    _patch_identity_toolkit(monkeypatch, status_code=200, payload={"email": "allowed@example.com"})
-    resp = _post(client, {"email": "allowed@example.com", "password": "secret"}, csrf="other")
-    assert resp.status_code == 403
+    assert "このメールアドレスは許可されていません" in resp.text
 
 
 def test_login_missing_api_key_is_500(monkeypatch):
     monkeypatch.delenv("FIREBASE_API_KEY", raising=False)
     monkeypatch.setenv("ALLOWED_USER_EMAILS", "allowed@example.com")
+    monkeypatch.setenv("AUTH_SECRET", "test-secret")
     c = TestClient(app)
-    c.cookies.set("csrf_token", CSRF)
     resp = c.post(
-        "/session",
-        json={"email": "allowed@example.com", "password": "secret"},
-        headers={"X-CSRF-Token": CSRF},
+        "/login",
+        data={"email": "allowed@example.com", "password": "secret"},
     )
     assert resp.status_code == 500
+    assert "サーバ設定エラーです" in resp.text
