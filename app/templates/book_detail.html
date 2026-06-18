@@ -11,6 +11,11 @@
     <p>有効: {{ "有効" if book.enabled else "無効" }}</p>
 </div>
 <div class="card">
+    <h2>価格推移</h2>
+    <canvas id="price-chart" height="120"></canvas>
+    <p id="price-chart-empty" style="display:none;">価格履歴がまだありません。</p>
+</div>
+<div class="card">
     <h2>セール履歴</h2>
     <table>
         <thead><tr><th>取得日時</th><th>巻</th><th>割引率</th><th>還元率</th><th>価格</th><th>最安値</th><th>通知</th></tr></thead>
@@ -91,8 +96,61 @@
     </form>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 const bookId = {{ book.id }};
+
+async function loadPriceHistory() {
+    const canvas = document.getElementById('price-chart');
+    const emptyMsg = document.getElementById('price-chart-empty');
+    try {
+        const res = await fetch(`/api/books/${bookId}/price-history`);
+        if (!res.ok) throw new Error('fetch failed');
+        const points = await res.json();
+        if (!points.length) {
+            canvas.style.display = 'none';
+            emptyMsg.style.display = 'block';
+            return;
+        }
+        const labels = points.map(p => p.fetched_at.replace('T', ' ').slice(0, 16));
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '実効価格',
+                        data: points.map(p => p.effective_price),
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        spanGaps: true,
+                        tension: 0.2,
+                    },
+                    {
+                        label: '価格',
+                        data: points.map(p => p.price),
+                        borderColor: '#888',
+                        backgroundColor: 'rgba(136, 136, 136, 0.1)',
+                        spanGaps: true,
+                        tension: 0.2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: { callback: v => v + '円' },
+                    },
+                },
+            },
+        });
+    } catch (e) {
+        canvas.style.display = 'none';
+        emptyMsg.style.display = 'block';
+    }
+}
 
 async function loadConditions() {
     const res = await fetch(`/api/books/${bookId}/conditions`);
@@ -169,5 +227,6 @@ async function deleteCondition(conditionId) {
 }
 
 loadConditions();
+loadPriceHistory();
 </script>
 {% endblock %}

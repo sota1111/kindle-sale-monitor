@@ -27,3 +27,14 @@ class SaleHistoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PriceHistoryPoint(BaseModel):
+    fetched_at: datetime
+    price: Optional[int] = None
+    effective_price: Optional[int] = None
+    discount_rate: Optional[int] = None
+    point_rate: Optional[int] = None
+
+    class Config:
+        from_attributes = True
