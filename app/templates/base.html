@@ -17,6 +17,13 @@
         .btn { display: inline-block; padding: 0.4rem 0.8rem; background: #4CAF50; color: white; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; }
         .btn-danger { background: #f44336; }
         .btn-secondary { background: #888; }
+        @media (max-width: 700px) {
+            main { padding: 1rem 0.75rem; }
+            .card { padding: 1rem; }
+            /* On mobile, let wide tables scroll horizontally inside their own box
+               instead of overflowing the page. Desktop layout is unchanged. */
+            table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+        }
     </style>
 </head>
 <body>
