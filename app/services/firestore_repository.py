@@ -131,6 +131,45 @@ def list_monitor_logs(limit: int = 100) -> list:
         return []
 
 
+def mirror_upsert(collection: str, doc_id: str, data: dict) -> None:
+    """Best-effort upsert of a single document into Firestore.
+
+    Used by the generic SQLite→Firestore mirror layer (firestore_sync) so that all
+    domain data survives Cloud Run's ephemeral container filesystem. No-op when
+    Firestore is not configured.
+    """
+    client = _get_client()
+    if not client:
+        return
+    try:
+        client.collection(collection).document(doc_id).set(data)
+    except Exception as e:
+        logger.warning(f"Firestore mirror_upsert failed ({collection}/{doc_id}): {e}")
+
+
+def mirror_delete(collection: str, doc_id: str) -> None:
+    """Best-effort delete of a single document from Firestore. No-op when unconfigured."""
+    client = _get_client()
+    if not client:
+        return
+    try:
+        client.collection(collection).document(doc_id).delete()
+    except Exception as e:
+        logger.warning(f"Firestore mirror_delete failed ({collection}/{doc_id}): {e}")
+
+
+def list_collection(collection: str) -> list:
+    """Return all documents in a Firestore collection as dicts. [] if unavailable."""
+    client = _get_client()
+    if not client:
+        return []
+    try:
+        return [doc.to_dict() for doc in client.collection(collection).stream()]
+    except Exception as e:
+        logger.warning(f"Firestore list_collection failed ({collection}): {e}")
+        return []
+
+
 def _get_client():
     from app.services.firestore_client import get_firestore_client
     return get_firestore_client()

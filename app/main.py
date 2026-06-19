@@ -23,6 +23,7 @@ from app.models import (
     SaleHistory,
     SkipLog,
 )
+from app.services import firestore_sync  # noqa: F401  (attaches Firestore mirror listeners)
 
 logging.basicConfig(
     level=getattr(logging, app_settings.log_level.upper(), logging.INFO),
@@ -63,7 +64,20 @@ def _seed_books():
         db.close()
 
 
+def _rehydrate_from_firestore():
+    # Cloud Run's SQLite is ephemeral; restore durable domain data from Firestore
+    # before seeding so UI/API-created records survive container restarts.
+    db = SessionLocal()
+    try:
+        firestore_sync.rehydrate_from_firestore(db)
+    except Exception as e:  # noqa: BLE001 - never let rehydration crash startup
+        logging.error("Firestore rehydration failed: %s", e)
+    finally:
+        db.close()
+
+
 _init_default_settings()
+_rehydrate_from_firestore()
 _seed_books()
 
 

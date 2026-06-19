@@ -58,6 +58,16 @@ curl -X POST http://localhost:8000/run    # 監視処理実行（通知なし）
 - `DISCORD_WEBHOOK_URL` 未設定 → 通知はスキップ（ログに "DISCORD_WEBHOOK_URL not set" と出力）
 - `GOOGLE_CLOUD_PROJECT` 未設定 → SQLiteで動作（Firestoreは使用しない）
 
+### データ永続化（Firestoreミラー）
+
+Cloud Run のコンテナFSは揮発性で、再起動・再デプロイのたびに SQLite が消えます。これを防ぐため、
+`GOOGLE_CLOUD_PROJECT` 設定時は全ドメインのデータ（本リスト / セール履歴 / 通知履歴 / 通知条件 /
+アプリ設定）をコミットごとに Firestore へ自動ミラーし、起動時に Firestore から SQLite を復元します。
+
+- 書き込み: SQLAlchemy のコミットイベントで `mirror_*` コレクション（`mirror_books` など）へ二重書き込み（best-effort）
+- 復元: 起動時に各 `mirror_*` コレクションを読み戻して SQLite を再構築（本リストのwishlist.jsonシードより先に実行）
+- `GOOGLE_CLOUD_PROJECT` 未設定時はミラー・復元とも no-op（従来どおりSQLiteのみ）
+
 ## 認証設定
 
 このアプリは Firebase Authentication を使用したログイン認証が必要です。`.env` に以下の変数を設定してください。
