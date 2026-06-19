@@ -325,9 +325,9 @@ def notifications_page(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/runs", response_class=HTMLResponse)
 def run_history_page(request: Request, db: Session = Depends(get_db)):
-    from app.models.log import MonitorLog
+    from app.api.history import get_recent_monitor_logs
 
-    logs = db.query(MonitorLog).order_by(MonitorLog.started_at.desc()).limit(100).all()
+    logs = get_recent_monitor_logs(db, 100)
     return templates.TemplateResponse(request, "run_history.html", {"logs": logs})
 
 
