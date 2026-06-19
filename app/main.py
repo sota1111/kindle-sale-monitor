@@ -51,7 +51,20 @@ def _init_default_settings():
         db.close()
 
 
+def _seed_books():
+    db = SessionLocal()
+    try:
+        from app.services.seeder import seed_books_from_wishlist
+
+        seed_books_from_wishlist(db, app_settings.local_wishlist_file)
+    except Exception as e:  # noqa: BLE001 - never let seeding crash startup
+        logging.error("Book seeding failed: %s", e)
+    finally:
+        db.close()
+
+
 _init_default_settings()
+_seed_books()
 
 
 @asynccontextmanager
@@ -308,6 +321,14 @@ def notifications_page(request: Request, db: Session = Depends(get_db)):
         .all()
     )
     return templates.TemplateResponse(request, "notifications.html", {"notifications": notifs})
+
+
+@app.get("/runs", response_class=HTMLResponse)
+def run_history_page(request: Request, db: Session = Depends(get_db)):
+    from app.models.log import MonitorLog
+
+    logs = db.query(MonitorLog).order_by(MonitorLog.started_at.desc()).limit(100).all()
+    return templates.TemplateResponse(request, "run_history.html", {"logs": logs})
 
 
 @app.get("/monitoring", response_class=HTMLResponse)

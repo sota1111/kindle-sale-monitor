@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}実行履歴{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>実行履歴</h1>
+    <p>監視の実行ごとの記録です。セールが0件でも記録されます。</p>
+    <table>
+        <thead>
+            <tr>
+                <th>実行日時</th>
+                <th>終了日時</th>
+                <th>チェック冊数</th>
+                <th>セール件数</th>
+                <th>通知数</th>
+                <th>ステータス</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.started_at }}</td>
+            <td>{{ log.finished_at or "-" }}</td>
+            <td>{{ log.books_checked }}</td>
+            <td>{{ log.sales_found }}</td>
+            <td>{{ log.notified }}</td>
+            <td>{{ log.status }}{% if log.error_message %} ({{ log.error_message }}){% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">記録なし</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
