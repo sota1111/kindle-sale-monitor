@@ -15,4 +15,6 @@ tests/
 *.log
 docker-compose.yml
 .dockerignore
-wishlist*.json
+# Keep the real wishlist.json in the image so startup seeding can run on Cloud Run;
+# only exclude the example template.
+wishlist.example.json
