@@ -57,5 +57,5 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "ALLOWED_USER_EMAILS=sota.moro@gmail.com" \
+            --set-env-vars "ALLOWED_USER_EMAILS=sota.moro@gmail.com,GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }}" \
             --set-secrets "FIREBASE_WEB_API_KEY=FIREBASE_API_KEY:latest,AUTH_SECRET=kindle-monitor-auth-secret:latest"

@@ -16,6 +16,28 @@ from app.services.condition_evaluator import evaluate_conditions
 logger = logging.getLogger(__name__)
 
 
+def _mirror_monitor_log_to_firestore(monitor_log: MonitorLog) -> None:
+    """Best-effort mirror of the final run record to Firestore.
+
+    Cloud Run's SQLite is ephemeral; mirroring the run history here lets it
+    survive container restarts. Never affects control flow.
+    """
+    try:
+        from app.services.firestore_repository import append_monitor_log
+
+        append_monitor_log({
+            "started_at": monitor_log.started_at,
+            "finished_at": monitor_log.finished_at,
+            "books_checked": monitor_log.books_checked,
+            "sales_found": monitor_log.sales_found,
+            "notified": monitor_log.notified,
+            "status": monitor_log.status,
+            "error_message": monitor_log.error_message,
+        })
+    except Exception:  # noqa: BLE001 - mirroring must never break a run
+        pass
+
+
 def _record_error(
     db: Session, url: Optional[str], error_type: str, error_msg: str, stack: str = ""
 ) -> None:
@@ -107,6 +129,7 @@ def run_check_all(db: Session) -> dict:
             monitor_log.finished_at = datetime.now(timezone.utc)
             monitor_log.books_checked = 0
             db.commit()
+            _mirror_monitor_log_to_firestore(monitor_log)
             return {"books_checked": 0, "sales_found": 0, "notified": 0}
 
         try:
@@ -166,6 +189,7 @@ def run_check_all(db: Session) -> dict:
                     monitor_log.error_message = "All scraping pages failed"
                     monitor_log.finished_at = datetime.now(timezone.utc)
                     db.commit()
+                    _mirror_monitor_log_to_firestore(monitor_log)
                     return {
                         "books_checked": books_checked,
                         "sales_found": 0,
@@ -180,6 +204,7 @@ def run_check_all(db: Session) -> dict:
             monitor_log.error_message = str(e)
             monitor_log.finished_at = datetime.now(timezone.utc)
             db.commit()
+            _mirror_monitor_log_to_firestore(monitor_log)
             return {
                 "books_checked": books_checked,
                 "sales_found": 0,
@@ -251,6 +276,7 @@ def run_check_all(db: Session) -> dict:
         monitor_log.notified = notified_count
         monitor_log.finished_at = datetime.now(timezone.utc)
         db.commit()
+        _mirror_monitor_log_to_firestore(monitor_log)
 
         logger.info(
             "Check complete: "
@@ -271,4 +297,5 @@ def run_check_all(db: Session) -> dict:
             db.commit()
         except Exception:
             db.rollback()
+        _mirror_monitor_log_to_firestore(monitor_log)
         raise

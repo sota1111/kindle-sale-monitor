@@ -87,6 +87,50 @@ def get_books_from_firestore() -> list:
         return []
 
 
+def append_monitor_log(log: dict) -> None:
+    """Append a monitor-run record to Firestore monitor_logs collection.
+
+    Cloud Run's SQLite is ephemeral, so the run history (実行履歴) is mirrored
+    here to survive container restarts/redeploys. Best-effort: no-op when no
+    Firestore client is configured.
+    """
+    client = _get_client()
+    if not client:
+        return
+    try:
+        client.collection("monitor_logs").add({
+            "started_at": log.get("started_at"),
+            "finished_at": log.get("finished_at"),
+            "books_checked": log.get("books_checked", 0),
+            "sales_found": log.get("sales_found", 0),
+            "notified": log.get("notified", 0),
+            "status": log.get("status"),
+            "error_message": log.get("error_message"),
+        })
+    except Exception as e:
+        logger.warning(f"Firestore append_monitor_log failed: {e}")
+
+
+def list_monitor_logs(limit: int = 100) -> list:
+    """List monitor-run records from Firestore, newest first. [] if unavailable."""
+    client = _get_client()
+    if not client:
+        return []
+    try:
+        from google.cloud import firestore
+
+        docs = (
+            client.collection("monitor_logs")
+            .order_by("started_at", direction=firestore.Query.DESCENDING)
+            .limit(limit)
+            .stream()
+        )
+        return [doc.to_dict() for doc in docs]
+    except Exception as e:
+        logger.warning(f"Firestore list_monitor_logs failed: {e}")
+        return []
+
+
 def _get_client():
     from app.services.firestore_client import get_firestore_client
     return get_firestore_client()

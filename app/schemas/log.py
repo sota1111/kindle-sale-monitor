@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class MonitorLogResponse(BaseModel):
-    id: int
+    id: Optional[int] = None
     started_at: datetime
     finished_at: Optional[datetime] = None
     books_checked: int
