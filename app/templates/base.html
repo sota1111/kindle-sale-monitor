@@ -5,21 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Kindle Sale Monitor{% endblock %}</title>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-        nav { background: #333; color: white; padding: 1rem; }
-        nav a { color: white; text-decoration: none; margin-right: 1rem; }
-        nav a:hover { text-decoration: underline; }
-        main { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        :root {
+            --canvas: #f4f6f9;
+            --surface: #ffffff;
+            --border: #e6e9ee;
+            --ink: #1c2430;
+            --muted: #5b6472;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --slate: #64748b;
+            --slate-hover: #475569;
+            --radius: 12px;
+            --shadow-sm: 0 1px 2px rgba(16,24,40,.06);
+            --shadow: 0 4px 16px rgba(16,24,40,.08);
+        }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+               margin: 0; padding: 0; background: var(--canvas); color: var(--ink);
+               line-height: 1.6; display: flex; flex-direction: column; min-height: 100vh;
+               -webkit-font-smoothing: antialiased; }
+        nav { position: sticky; top: 0; z-index: 20;
+              background: linear-gradient(90deg, #1e293b, #0f172a); color: #fff;
+              padding: .7rem 1.25rem; box-shadow: var(--shadow-sm);
+              display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+        .nav-brand { display: inline-flex; align-items: center; gap: .5rem;
+                     font-weight: 700; margin-right: 1rem; letter-spacing: -.01em; }
+        .nav-mark { display: inline-flex; align-items: center; justify-content: center;
+                    width: 26px; height: 26px; border-radius: 7px;
+                    background: linear-gradient(135deg, var(--primary), #f59e0b);
+                    font-size: .85rem; }
+        nav a { color: #cbd5e1; text-decoration: none; padding: .35rem .6rem;
+                border-radius: 7px; font-size: .9rem; transition: background .15s, color .15s; }
+        nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+        nav form { margin-left: auto; }
+        nav .nav-logout { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
+                          color: #e2e8f0; cursor: pointer; font-size: .85rem; font-family: inherit;
+                          padding: .35rem .75rem; border-radius: 7px; transition: background .15s; }
+        nav .nav-logout:hover { background: rgba(255,255,255,.18); }
+        main { padding: 1.75rem 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; }
+        h1 { font-size: 1.5rem; letter-spacing: -.02em; }
+        h2 { font-size: 1.15rem; letter-spacing: -.01em; }
+        .card { background: var(--surface); border: 1px solid var(--border);
+                border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem;
+                box-shadow: var(--shadow-sm); }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
-        th { background: #f9f9f9; font-weight: bold; }
-        .btn { display: inline-block; padding: 0.4rem 0.8rem; background: #4CAF50; color: white; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; }
-        .btn-danger { background: #f44336; }
-        .btn-secondary { background: #888; }
+        th, td { padding: .6rem .65rem; border-bottom: 1px solid var(--border); text-align: left; }
+        th { background: #f8fafc; font-weight: 600; color: var(--muted);
+             font-size: .82rem; text-transform: none; }
+        tbody tr:hover { background: #f8fafc; }
+        td a { color: var(--primary); text-decoration: none; }
+        td a:hover { text-decoration: underline; }
+        .btn { display: inline-flex; align-items: center; justify-content: center;
+               padding: .5rem .95rem; background: var(--primary); color: #fff;
+               border-radius: 8px; text-decoration: none; border: none; cursor: pointer;
+               font-size: .9rem; font-weight: 600; font-family: inherit;
+               transition: background .15s, box-shadow .15s; }
+        .btn:hover { background: var(--primary-hover); box-shadow: var(--shadow); }
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: var(--danger-hover); }
+        .btn-secondary { background: var(--slate); }
+        .btn-secondary:hover { background: var(--slate-hover); }
+        .app-footer { border-top: 1px solid var(--border); padding: 1.25rem;
+                      text-align: center; color: #94a3b8; font-size: .8rem; }
         @media (max-width: 700px) {
-            main { padding: 1rem 0.75rem; }
-            .card { padding: 1rem; }
+            main { padding: 1.25rem .75rem; }
+            .card { padding: 1.1rem; }
+            nav { gap: .15rem; }
             /* On mobile, let wide tables scroll horizontally inside their own box
                instead of overflowing the page. Desktop layout is unchanged. */
             table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
@@ -28,6 +81,7 @@
 </head>
 <body>
     <nav>
+        <span class="nav-brand"><span class="nav-mark">📚</span>Kindle Sale Monitor</span>
         <a href="/">ダッシュボード</a>
         <a href="/books">ほしい本リスト</a>
         <a href="/sales">セール履歴</a>
@@ -36,12 +90,15 @@
         <a href="/monitoring">非通知ログ</a>
         <a href="/settings">設定</a>
         <a href="/errors">エラー履歴</a>
-        <form method="post" action="/logout" style="display:inline;">
-            <button type="submit" style="background:none;border:none;color:white;cursor:pointer;font-size:inherit;padding:0;margin-left:1rem;">ログアウト</button>
+        <form method="post" action="/logout">
+            <button type="submit" class="nav-logout">ログアウト</button>
         </form>
     </nav>
     <main>
         {% block content %}{% endblock %}
     </main>
+    <footer class="app-footer">
+        Kindle Sale Monitor — ほしい本のセールを自動で見張ります
+    </footer>
 </body>
 </html>

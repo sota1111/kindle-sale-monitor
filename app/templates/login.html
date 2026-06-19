@@ -5,26 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ログイン - Kindle Sale Monitor</title>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 0; background: #f5f5f5;
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 1.5rem;
+           background: #f4f6f9; color: #1c2430; -webkit-font-smoothing: antialiased;
            display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: white; border-radius: 8px; padding: 2rem; width: 100%;
-            max-width: 360px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-    h1 { margin: 0 0 1.5rem; font-size: 1.4rem; color: #333; text-align: center; }
-    label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: #555; }
-    input { width: 100%; box-sizing: border-box; padding: 0.5rem 0.75rem;
-            border: 1px solid #ccc; border-radius: 4px; margin-bottom: 1rem; font-size: 1rem; }
-    button { width: 100%; padding: 0.6rem; background: #333; color: white;
-             border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-    button:hover { background: #555; }
+    .card { background: white; border: 1px solid #e6e9ee; border-radius: 16px; padding: 2rem; width: 100%;
+            max-width: 380px; box-shadow: 0 12px 32px rgba(16,24,40,.12); }
+    .brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 1.5rem; }
+    .brand-mark { display: inline-flex; align-items: center; justify-content: center;
+                  width: 44px; height: 44px; border-radius: 12px; margin-bottom: .75rem; font-size: 1.3rem;
+                  background: linear-gradient(135deg, #2563eb, #f59e0b); }
+    h1 { margin: 0; font-size: 1.3rem; text-align: center; letter-spacing: -.01em; }
+    .brand p { margin: .35rem 0 0; color: #5b6472; font-size: .88rem; }
+    label { display: block; margin-bottom: 0.3rem; font-size: 0.88rem; color: #1c2430; font-weight: 500; }
+    input { width: 100%; box-sizing: border-box; padding: 0.6rem 0.8rem;
+            border: 1px solid #d4d8df; border-radius: 8px; margin-bottom: 1rem; font-size: 1rem; }
+    input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px #e8f0fe; }
+    button { width: 100%; padding: 0.7rem; background: #2563eb; color: white;
+             border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .15s; }
+    button:hover { background: #1d4ed8; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .error { color: #c00; font-size: 0.9rem; margin-bottom: 1rem;
-             background: #ffebee; border: 1px solid #ffcdd2; padding: 0.5rem; border-radius: 4px; }
+    .error { color: #b91c1c; font-size: 0.88rem; margin-bottom: 1rem;
+             background: #fdecec; border: 1px solid #f6c5c5; padding: 0.55rem .7rem; border-radius: 8px; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Kindle Sale Monitor</h1>
-    
+    <div class="brand">
+      <span class="brand-mark">📚</span>
+      <h1>Kindle Sale Monitor</h1>
+      <p>ログインして監視を続ける</p>
+    </div>
+
     {% if error %}
     <p class="error">{{ error }}</p>
     {% endif %}
