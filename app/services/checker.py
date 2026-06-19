@@ -153,9 +153,9 @@ def run_check_all(db: Session) -> dict:
                 else settings.max_retries
             )
 
-            from app.services.scraper import scrape_sale_bon_with_diagnostics
+            from app.services.data_source import fetch_sale_items_with_diagnostics
 
-            sale_items, diagnostics = scrape_sale_bon_with_diagnostics(
+            sale_items, diagnostics = fetch_sale_items_with_diagnostics(
                 books=books,
                 interval_seconds=interval,
                 max_retries=max_retries,

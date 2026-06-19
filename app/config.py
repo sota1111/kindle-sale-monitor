@@ -16,6 +16,18 @@ class Settings(BaseSettings):
     firestore_database_id: str = "(default)"
     local_wishlist_file: str = "wishlist.json"
 
+    # Amazon Product Advertising API (PA-API 5.0) — real data source.
+    # Credentials are provided at deploy time (Cloud Run secrets).
+    paapi_access_key: str = ""
+    paapi_secret_key: str = ""
+    paapi_partner_tag: str = ""
+    paapi_host: str = "webservices.amazon.co.jp"
+    paapi_region: str = "us-west-2"
+    paapi_marketplace: str = "www.amazon.co.jp"
+    # Data source selection: auto | paapi | scrape.
+    # "auto" uses PA-API when credentials are configured, otherwise scraping.
+    data_source: str = "auto"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
