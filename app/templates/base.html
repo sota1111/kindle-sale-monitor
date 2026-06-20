@@ -73,6 +73,16 @@
         .btn-secondary:hover { background: var(--slate-hover); }
         .app-footer { border-top: 1px solid var(--border); padding: 1.25rem;
                       text-align: center; color: #94a3b8; font-size: .8rem; }
+        .lang-toggle { display: inline-flex; align-items: center; margin-left: auto;
+                       border: 1px solid rgba(255,255,255,.25); border-radius: 7px;
+                       overflow: hidden; flex-shrink: 0; }
+        .lang-toggle button { background: transparent; color: #cbd5e1; border: none;
+                              cursor: pointer; font-family: inherit; font-size: .8rem;
+                              font-weight: 600; padding: .3rem .55rem; line-height: 1;
+                              transition: background .15s, color .15s; }
+        .lang-toggle button + button { border-left: 1px solid rgba(255,255,255,.25); }
+        .lang-toggle button:hover { color: #fff; }
+        .lang-toggle button.active { background: rgba(255,255,255,.2); color: #fff; }
         @media (max-width: 700px) {
             main { padding: 1.25rem .75rem; }
             .card { padding: 1.1rem; }
@@ -114,7 +124,11 @@
             <a href="/settings">設定</a>
             <a href="/errors">エラー履歴</a>
         </div>
-        <form method="post" action="/logout">
+        <div class="lang-toggle" role="group" aria-label="Language">
+            <button type="button" data-lang-btn="ja">JP</button>
+            <button type="button" data-lang-btn="en">EN</button>
+        </div>
+        <form method="post" action="/logout" style="margin-left:.5rem">
             <button type="submit" class="nav-logout">ログアウト</button>
         </form>
     </nav>
@@ -124,5 +138,221 @@
     <footer class="app-footer">
         Kindle Sale Monitor — ほしい本のセールを自動で見張ります
     </footer>
+
+    <!-- Lightweight client-side JP/EN i18n (SOT-953).
+         Walks the DOM once, caches text nodes / data-label / placeholder whose trimmed
+         content matches a ja->en dictionary of UI-shell strings, and swaps on toggle.
+         Default = ja (first paint stays Japanese). Dynamic DB values never match keys.
+         A MutationObserver re-translates JS-rendered content (e.g. condition tables). -->
+    <script>
+    (function () {
+        var STORAGE_KEY = "ksm.lang";
+        var DICT = {
+            // nav / shell
+            "ダッシュボード": "Dashboard",
+            "ほしい本リスト": "Wishlist",
+            "ほしい本リストを見る": "View wishlist",
+            "セール履歴": "Sale history",
+            "実行履歴": "Run history",
+            "通知履歴": "Notifications",
+            "非通知ログ": "Silent log",
+            "設定": "Settings",
+            "エラー履歴": "Error log",
+            "ログアウト": "Log out",
+            "Kindle Sale Monitor — ほしい本のセールを自動で見張ります": "Kindle Sale Monitor — auto-watches your wishlist for sales",
+            // dashboard
+            "登録済み本:": "Registered books:",
+            "未通知セール:": "Pending sales:",
+            "件": "items",
+            "手動チェック実行": "Run manual check",
+            "最近のセール（上位5件）": "Recent sales (top 5)",
+            "最近の通知（上位5件）": "Recent notifications (top 5)",
+            // common table headers / labels
+            "取得日時": "Fetched at",
+            "作品": "Title",
+            "作品名": "Title",
+            "作者": "Author",
+            "作者名": "Author",
+            "巻": "Volume",
+            "割引率": "Discount",
+            "還元率": "Point rate",
+            "価格": "Price",
+            "最安値": "Lowest",
+            "通知": "Notified",
+            "通知済": "Notified",
+            "通知日時": "Notified at",
+            "本": "Book",
+            "本ID": "Book ID",
+            "理由": "Reason",
+            "成功": "Success",
+            "操作": "Actions",
+            "編集": "Edit",
+            "削除": "Delete",
+            "保存": "Save",
+            "キャンセル": "Cancel",
+            "有効": "Enabled",
+            "無効": "Disabled",
+            "有効のみ": "Enabled only",
+            "無効のみ": "Disabled only",
+            "全件": "All",
+            "通知条件": "Conditions",
+            "未設定（全通知）": "Not set (notify all)",
+            "登録された本はありません": "No books registered",
+            "本を登録": "Add book",
+            "本を編集": "Edit book",
+            // book detail
+            "価格推移": "Price history",
+            "価格履歴がまだありません。": "No price history yet.",
+            "セール履歴なし": "No sale history",
+            "条件が設定されていない場合は既存の通知設定が使用されます。複数の条件を設定した場合、いずれか1つが全て満たされれば通知されます（OR結合）。": "If no condition is set, the existing notification settings are used. When multiple conditions are set, a notification is sent if any one of them is fully met (OR).",
+            "名前": "Name",
+            "名前（任意）": "Name (optional)",
+            "CB必須": "CB required",
+            "CB率": "CB rate",
+            "対象巻": "Volumes",
+            "過去最安": "All-time low",
+            "無料のみ": "Free only",
+            "概要": "Summary",
+            "読み込み中...": "Loading...",
+            "条件を追加": "Add condition",
+            "条件なし（全通知）": "No conditions (notify all)",
+            "最低割引率 (%)": "Min discount (%)",
+            "キャッシュバック必須": "Cashback required",
+            "最低CB率 (%)": "Min CB rate (%)",
+            "対象巻（カンマ区切り、例: 1,2,3 または latest）": "Volumes (comma-separated, e.g. 1,2,3 or latest)",
+            "過去最安更新のみ": "All-time low only",
+            // book form
+            "作品名 *": "Title *",
+            "出版社": "Publisher",
+            "メモ": "Memo",
+            "シリーズ監視": "Series watch",
+            "この本を削除": "Delete this book",
+            // run history
+            "監視の実行ごとの記録です。セールが0件でも記録されます。": "A record of each monitoring run. Runs are logged even when no sales are found.",
+            "実行日時": "Started",
+            "終了日時": "Finished",
+            "チェック冊数": "Books checked",
+            "セール件数": "Sales found",
+            "通知数": "Notified count",
+            "ステータス": "Status",
+            "記録なし": "No records",
+            // notifications
+            "条件マッチ詳細": "Matched conditions",
+            "通知履歴なし": "No notifications",
+            // monitoring history
+            "監視履歴（非通知）": "Monitoring log (silent)",
+            "条件に一致せず通知しなかった記録です。": "Records that did not match any condition and were not notified.",
+            "日時": "Date",
+            "非通知理由": "Skip reason",
+            // settings
+            "設定キー": "Setting key",
+            "現在の値": "Current value",
+            "更新日時": "Updated at",
+            "設定なし": "No settings",
+            "設定を保存": "Save settings",
+            // error logs
+            "発生日時": "Occurred at",
+            "種別": "Type",
+            "メッセージ": "Message",
+            "エラー履歴なし": "No error logs",
+            // placeholders
+            "例: 50%+CB": "e.g. 50%+CB",
+            "例: 50": "e.g. 50",
+            "例: 20": "e.g. 20",
+            "空欄=全巻": "Blank = all volumes"
+        };
+
+        var textCache = [];   // {node, ja, lead, trail}
+        var attrCache = [];   // {el, attr, ja}
+        var lang = "ja";
+
+        function readLang() {
+            try { return localStorage.getItem(STORAGE_KEY) === "en" ? "en" : "ja"; }
+            catch (e) { return "ja"; }
+        }
+
+        function collect(root) {
+            if (!root) return;
+            if (root.nodeType === 3) root = root.parentNode;
+            if (!root || root.nodeType !== 1) return;
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode: function (n) {
+                    if (!n.nodeValue) return NodeFilter.FILTER_REJECT;
+                    var p = n.parentNode;
+                    if (p && (p.nodeName === "SCRIPT" || p.nodeName === "STYLE")) return NodeFilter.FILTER_REJECT;
+                    var t = n.nodeValue.trim();
+                    return (t && Object.prototype.hasOwnProperty.call(DICT, t))
+                        ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                }
+            });
+            var n;
+            while ((n = walker.nextNode())) {
+                if (n.__ksmSeen) continue;
+                n.__ksmSeen = true;
+                var raw = n.nodeValue, ja = raw.trim(), i = raw.indexOf(ja);
+                textCache.push({ node: n, ja: ja, lead: raw.slice(0, i), trail: raw.slice(i + ja.length) });
+            }
+            var sel = root.querySelectorAll ? root : document;
+            (root.querySelectorAll ? root.querySelectorAll("[data-label]") : []).forEach(function (el) {
+                var ja = (el.getAttribute("data-label") || "").trim();
+                if (Object.prototype.hasOwnProperty.call(DICT, ja) && !el.__ksmLabel) {
+                    el.__ksmLabel = true; attrCache.push({ el: el, attr: "data-label", ja: ja });
+                }
+            });
+            (root.querySelectorAll ? root.querySelectorAll("[placeholder]") : []).forEach(function (el) {
+                var ja = (el.getAttribute("placeholder") || "").trim();
+                if (Object.prototype.hasOwnProperty.call(DICT, ja) && !el.__ksmPh) {
+                    el.__ksmPh = true; attrCache.push({ el: el, attr: "placeholder", ja: ja });
+                }
+            });
+        }
+
+        function apply() {
+            var en = lang === "en";
+            textCache.forEach(function (c) {
+                c.node.nodeValue = c.lead + (en && DICT[c.ja] ? DICT[c.ja] : c.ja) + c.trail;
+            });
+            attrCache.forEach(function (a) {
+                a.el.setAttribute(a.attr, en && DICT[a.ja] ? DICT[a.ja] : a.ja);
+            });
+            document.documentElement.lang = lang;
+            var btns = document.querySelectorAll("[data-lang-btn]");
+            for (var i = 0; i < btns.length; i++) {
+                btns[i].classList.toggle("active", btns[i].getAttribute("data-lang-btn") === lang);
+            }
+            try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+        }
+
+        function setLang(next) { lang = next === "en" ? "en" : "ja"; apply(); }
+
+        function init() {
+            lang = readLang();
+            collect(document.body);
+            apply();
+            var btns = document.querySelectorAll("[data-lang-btn]");
+            for (var i = 0; i < btns.length; i++) {
+                (function (b) {
+                    b.addEventListener("click", function () { setLang(b.getAttribute("data-lang-btn")); });
+                })(btns[i]);
+            }
+            if (window.MutationObserver) {
+                var obs = new MutationObserver(function (muts) {
+                    var added = false;
+                    muts.forEach(function (m) {
+                        for (var j = 0; j < m.addedNodes.length; j++) {
+                            var node = m.addedNodes[j];
+                            if (node.nodeType === 1 || node.nodeType === 3) { collect(node); added = true; }
+                        }
+                    });
+                    if (added) apply();
+                });
+                obs.observe(document.body, { childList: true, subtree: true });
+            }
+        }
+
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+        else init();
+    })();
+    </script>
 </body>
 </html>
