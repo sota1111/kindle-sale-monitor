@@ -26,10 +26,24 @@
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .error { color: #b91c1c; font-size: 0.88rem; margin-bottom: 1rem;
              background: #fdecec; border: 1px solid #f6c5c5; padding: 0.55rem .7rem; border-radius: 8px; }
+    .lang-toggle { display: inline-flex; align-items: center; margin: 0 0 1rem auto;
+                   border: 1px solid #d4d8df; border-radius: 7px; overflow: hidden; }
+    .lang-toggle button { width: auto; background: transparent; color: #5b6472; border: none;
+                          cursor: pointer; font-family: inherit; font-size: .78rem; font-weight: 600;
+                          padding: .25rem .55rem; border-radius: 0; }
+    .lang-toggle button + button { border-left: 1px solid #d4d8df; }
+    .lang-toggle button.active { background: #2563eb; color: #fff; }
+    .lang-toggle-row { display: flex; }
   </style>
 </head>
 <body>
   <div class="card">
+    <div class="lang-toggle-row">
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button type="button" data-lang-btn="ja">JP</button>
+        <button type="button" data-lang-btn="en">EN</button>
+      </div>
+    </div>
     <div class="brand">
       <span class="brand-mark">📚</span>
       <h1>Kindle Sale Monitor</h1>
@@ -50,5 +64,76 @@
       <button type="submit">ログイン</button>
     </form>
   </div>
+
+  <!-- Lightweight client-side JP/EN i18n for the login page (SOT-953). -->
+  <script>
+  (function () {
+      var STORAGE_KEY = "ksm.lang";
+      var DICT = {
+          "ログインして監視を続ける": "Sign in to continue monitoring",
+          "メールアドレス": "Email",
+          "パスワード": "Password",
+          "ログイン": "Sign in",
+          "パスワードを入力": "Enter your password"
+      };
+      var textCache = [], attrCache = [], lang = "ja";
+      function readLang() {
+          try { return localStorage.getItem(STORAGE_KEY) === "en" ? "en" : "ja"; }
+          catch (e) { return "ja"; }
+      }
+      function collect() {
+          var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+              acceptNode: function (n) {
+                  if (!n.nodeValue) return NodeFilter.FILTER_REJECT;
+                  var p = n.parentNode;
+                  if (p && (p.nodeName === "SCRIPT" || p.nodeName === "STYLE")) return NodeFilter.FILTER_REJECT;
+                  var t = n.nodeValue.trim();
+                  return (t && Object.prototype.hasOwnProperty.call(DICT, t))
+                      ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+              }
+          });
+          var n;
+          while ((n = walker.nextNode())) {
+              var raw = n.nodeValue, ja = raw.trim(), i = raw.indexOf(ja);
+              textCache.push({ node: n, ja: ja, lead: raw.slice(0, i), trail: raw.slice(i + ja.length) });
+          }
+          var phs = document.querySelectorAll("[placeholder]");
+          for (var k = 0; k < phs.length; k++) {
+              var pj = (phs[k].getAttribute("placeholder") || "").trim();
+              if (Object.prototype.hasOwnProperty.call(DICT, pj)) attrCache.push({ el: phs[k], ja: pj });
+          }
+      }
+      function apply() {
+          var en = lang === "en";
+          textCache.forEach(function (c) {
+              c.node.nodeValue = c.lead + (en && DICT[c.ja] ? DICT[c.ja] : c.ja) + c.trail;
+          });
+          attrCache.forEach(function (a) {
+              a.el.setAttribute("placeholder", en && DICT[a.ja] ? DICT[a.ja] : a.ja);
+          });
+          document.documentElement.lang = lang;
+          var btns = document.querySelectorAll("[data-lang-btn]");
+          for (var i = 0; i < btns.length; i++) {
+              btns[i].classList.toggle("active", btns[i].getAttribute("data-lang-btn") === lang);
+          }
+          try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+      }
+      function init() {
+          lang = readLang();
+          collect();
+          apply();
+          var btns = document.querySelectorAll("[data-lang-btn]");
+          for (var i = 0; i < btns.length; i++) {
+              (function (b) {
+                  b.addEventListener("click", function () {
+                      lang = b.getAttribute("data-lang-btn") === "en" ? "en" : "ja"; apply();
+                  });
+              })(btns[i]);
+          }
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+      else init();
+  })();
+  </script>
 </body>
 </html>
