@@ -29,17 +29,21 @@
         nav { position: sticky; top: 0; z-index: 20;
               background: linear-gradient(90deg, #1e293b, #0f172a); color: #fff;
               padding: .7rem 1.25rem; box-shadow: var(--shadow-sm);
-              display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+              display: flex; align-items: center; gap: .35rem; flex-wrap: nowrap; }
         .nav-brand { display: inline-flex; align-items: center; gap: .5rem;
-                     font-weight: 700; margin-right: 1rem; letter-spacing: -.01em; }
+                     font-weight: 700; margin-right: 1rem; letter-spacing: -.01em;
+                     white-space: nowrap; flex-shrink: 0; }
+        .nav-links { display: flex; flex-wrap: nowrap; align-items: center; gap: .35rem;
+                     overflow-x: auto; min-width: 0; }
         .nav-mark { display: inline-flex; align-items: center; justify-content: center;
                     width: 26px; height: 26px; border-radius: 7px;
                     background: linear-gradient(135deg, var(--primary), #f59e0b);
                     font-size: .85rem; }
         nav a { color: #cbd5e1; text-decoration: none; padding: .35rem .6rem;
-                border-radius: 7px; font-size: .9rem; transition: background .15s, color .15s; }
+                border-radius: 7px; font-size: .9rem; white-space: nowrap;
+                transition: background .15s, color .15s; }
         nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
-        nav form { margin-left: auto; }
+        nav form { margin-left: auto; flex-shrink: 0; }
         nav .nav-logout { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
                           color: #e2e8f0; cursor: pointer; font-size: .85rem; font-family: inherit;
                           padding: .35rem .75rem; border-radius: 7px; transition: background .15s; }
@@ -100,14 +104,16 @@
 <body>
     <nav>
         <span class="nav-brand"><span class="nav-mark">📚</span>Kindle Sale Monitor</span>
-        <a href="/">ダッシュボード</a>
-        <a href="/books">ほしい本リスト</a>
-        <a href="/sales">セール履歴</a>
-        <a href="/runs">実行履歴</a>
-        <a href="/notifications">通知履歴</a>
-        <a href="/monitoring">非通知ログ</a>
-        <a href="/settings">設定</a>
-        <a href="/errors">エラー履歴</a>
+        <div class="nav-links">
+            <a href="/">ダッシュボード</a>
+            <a href="/books">ほしい本リスト</a>
+            <a href="/sales">セール履歴</a>
+            <a href="/runs">実行履歴</a>
+            <a href="/notifications">通知履歴</a>
+            <a href="/monitoring">非通知ログ</a>
+            <a href="/settings">設定</a>
+            <a href="/errors">エラー履歴</a>
+        </div>
         <form method="post" action="/logout">
             <button type="submit" class="nav-logout">ログアウト</button>
         </form>
