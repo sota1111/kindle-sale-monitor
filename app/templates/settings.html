@@ -4,14 +4,14 @@
 <div class="card">
     <h1>設定</h1>
     <form method="post" action="/settings">
-    <table>
+    <table class="responsive-table">
         <thead><tr><th>設定キー</th><th>現在の値</th><th>更新日時</th></tr></thead>
         <tbody>
         {% for s in settings %}
         <tr>
-            <td>{{ s.key }}</td>
-            <td><input type="text" name="{{ s.key }}" value="{{ s.value }}" style="width:120px"></td>
-            <td>{{ s.updated_at }}</td>
+            <td data-label="設定キー">{{ s.key }}</td>
+            <td data-label="現在の値"><input type="text" name="{{ s.key }}" value="{{ s.value }}" style="width:120px"></td>
+            <td data-label="更新日時">{{ s.updated_at }}</td>
         </tr>
         {% else %}
         <tr><td colspan="3">設定なし</td></tr>

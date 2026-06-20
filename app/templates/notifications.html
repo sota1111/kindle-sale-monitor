@@ -3,16 +3,16 @@
 {% block content %}
 <div class="card">
     <h1>通知履歴</h1>
-    <table>
+    <table class="responsive-table">
         <thead><tr><th>通知日時</th><th>本ID</th><th>理由</th><th>条件マッチ詳細</th><th>成功</th></tr></thead>
         <tbody>
         {% for n in notifications %}
         <tr>
-            <td>{{ n.notified_at }}</td>
-            <td><a href="/books/{{ n.book_id }}">{{ n.book_id }}</a></td>
-            <td>{{ n.reason or "-" }}</td>
-            <td>{{ n.matched_conditions or "-" }}</td>
-            <td>{{ "○" if n.success else "✗" }}</td>
+            <td data-label="通知日時">{{ n.notified_at }}</td>
+            <td data-label="本ID"><a href="/books/{{ n.book_id }}">{{ n.book_id }}</a></td>
+            <td data-label="理由">{{ n.reason or "-" }}</td>
+            <td data-label="条件マッチ詳細">{{ n.matched_conditions or "-" }}</td>
+            <td data-label="成功">{{ "○" if n.success else "✗" }}</td>
         </tr>
         {% else %}
         <tr><td colspan="5">通知履歴なし</td></tr>

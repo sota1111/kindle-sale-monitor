@@ -3,19 +3,19 @@
 {% block content %}
 <div class="card">
     <h1>セール履歴</h1>
-    <table>
+    <table class="responsive-table">
         <thead><tr><th>取得日時</th><th>本ID</th><th>巻</th><th>割引率</th><th>還元率</th><th>価格</th><th>最安値</th><th>通知</th></tr></thead>
         <tbody>
         {% for sale in sales %}
         <tr>
-            <td>{{ sale.fetched_at }}</td>
-            <td><a href="/books/{{ sale.book_id }}">{{ sale.book_id }}</a></td>
-            <td>{{ sale.volume or "-" }}</td>
-            <td>{{ sale.discount_rate or 0 }}%</td>
-            <td>{{ sale.point_rate or 0 }}%</td>
-            <td>{{ sale.price or "-" }}円</td>
-            <td>{{ "○" if sale.is_cheapest else "-" }}</td>
-            <td>{{ "通知済" if sale.notified else "-" }}</td>
+            <td data-label="取得日時">{{ sale.fetched_at }}</td>
+            <td data-label="本ID"><a href="/books/{{ sale.book_id }}">{{ sale.book_id }}</a></td>
+            <td data-label="巻">{{ sale.volume or "-" }}</td>
+            <td data-label="割引率">{{ sale.discount_rate or 0 }}%</td>
+            <td data-label="還元率">{{ sale.point_rate or 0 }}%</td>
+            <td data-label="価格">{{ sale.price or "-" }}円</td>
+            <td data-label="最安値">{{ "○" if sale.is_cheapest else "-" }}</td>
+            <td data-label="通知">{{ "通知済" if sale.notified else "-" }}</td>
         </tr>
         {% else %}
         <tr><td colspan="8">セール履歴なし</td></tr>

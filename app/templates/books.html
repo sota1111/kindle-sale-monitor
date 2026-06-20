@@ -11,7 +11,7 @@
     </span>
 </div>
 <div class="card">
-    <table>
+    <table class="responsive-table">
         <thead>
             <tr>
                 <th>ID</th><th>作品名</th><th>作者</th><th>ASIN</th><th>有効</th><th>通知条件</th><th>操作</th>
@@ -20,13 +20,13 @@
         <tbody>
             {% for book in books %}
             <tr>
-                <td>{{ book.id }}</td>
-                <td><a href="/books/{{ book.id }}">{{ book.title }}</a></td>
-                <td>{{ book.author or "-" }}</td>
-                <td>{{ book.asin or "-" }}</td>
-                <td>{{ "有効" if book.enabled else "無効" }}</td>
-                <td>{{ book.condition_summary or "未設定（全通知）" }}</td>
-                <td>
+                <td data-label="ID">{{ book.id }}</td>
+                <td data-label="作品名"><a href="/books/{{ book.id }}">{{ book.title }}</a></td>
+                <td data-label="作者">{{ book.author or "-" }}</td>
+                <td data-label="ASIN">{{ book.asin or "-" }}</td>
+                <td data-label="有効">{{ "有効" if book.enabled else "無効" }}</td>
+                <td data-label="通知条件">{{ book.condition_summary or "未設定（全通知）" }}</td>
+                <td data-label="操作">
                     <a href="/books/{{ book.id }}/edit" class="btn btn-secondary">編集</a>
                 </td>
             </tr>

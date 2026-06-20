@@ -17,18 +17,18 @@
 </div>
 <div class="card">
     <h2>セール履歴</h2>
-    <table>
+    <table class="responsive-table">
         <thead><tr><th>取得日時</th><th>巻</th><th>割引率</th><th>還元率</th><th>価格</th><th>最安値</th><th>通知</th></tr></thead>
         <tbody>
         {% for sale in sales %}
         <tr>
-            <td>{{ sale.fetched_at }}</td>
-            <td>{{ sale.volume or "-" }}</td>
-            <td>{{ sale.discount_rate or 0 }}%</td>
-            <td>{{ sale.point_rate or 0 }}%</td>
-            <td>{{ sale.price or "-" }}円</td>
-            <td>{{ "○" if sale.is_cheapest else "-" }}</td>
-            <td>{{ "通知済" if sale.notified else "-" }}</td>
+            <td data-label="取得日時">{{ sale.fetched_at }}</td>
+            <td data-label="巻">{{ sale.volume or "-" }}</td>
+            <td data-label="割引率">{{ sale.discount_rate or 0 }}%</td>
+            <td data-label="還元率">{{ sale.point_rate or 0 }}%</td>
+            <td data-label="価格">{{ sale.price or "-" }}円</td>
+            <td data-label="最安値">{{ "○" if sale.is_cheapest else "-" }}</td>
+            <td data-label="通知">{{ "通知済" if sale.notified else "-" }}</td>
         </tr>
         {% else %}
         <tr><td colspan="7">セール履歴なし</td></tr>
@@ -40,7 +40,7 @@
 <div class="card">
     <h2>通知条件</h2>
     <p>条件が設定されていない場合は既存の通知設定が使用されます。複数の条件を設定した場合、いずれか1つが全て満たされれば通知されます（OR結合）。</p>
-    <table id="conditions-table">
+    <table id="conditions-table" class="responsive-table">
         <thead>
             <tr>
                 <th>名前</th>
@@ -162,15 +162,15 @@ async function loadConditions() {
     }
     tbody.innerHTML = conditions.map(c => `
         <tr>
-            <td>${c.name || '-'}</td>
-            <td>${c.min_discount_rate != null ? c.min_discount_rate + '%以上' : '-'}</td>
-            <td>${c.cashback_only ? '○' : '-'}</td>
-            <td>${c.min_cashback_rate != null ? c.min_cashback_rate + '%以上' : '-'}</td>
-            <td>${c.volume_filter ? c.volume_filter.join(', ') : '-'}</td>
-            <td>${c.cheapest_only ? '○' : '-'}</td>
-            <td>${c.free_only ? '○' : '-'}</td>
-            <td>${c.summary}</td>
-            <td><button class="btn btn-danger" onclick="deleteCondition(${c.id})">削除</button></td>
+            <td data-label="名前">${c.name || '-'}</td>
+            <td data-label="割引率">${c.min_discount_rate != null ? c.min_discount_rate + '%以上' : '-'}</td>
+            <td data-label="CB必須">${c.cashback_only ? '○' : '-'}</td>
+            <td data-label="CB率">${c.min_cashback_rate != null ? c.min_cashback_rate + '%以上' : '-'}</td>
+            <td data-label="対象巻">${c.volume_filter ? c.volume_filter.join(', ') : '-'}</td>
+            <td data-label="過去最安">${c.cheapest_only ? '○' : '-'}</td>
+            <td data-label="無料のみ">${c.free_only ? '○' : '-'}</td>
+            <td data-label="概要">${c.summary}</td>
+            <td data-label="操作"><button class="btn btn-danger" onclick="deleteCondition(${c.id})">削除</button></td>
         </tr>
     `).join('');
 }
