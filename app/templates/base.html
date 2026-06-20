@@ -73,9 +73,27 @@
             main { padding: 1.25rem .75rem; }
             .card { padding: 1.1rem; }
             nav { gap: .15rem; }
-            /* On mobile, let wide tables scroll horizontally inside their own box
-               instead of overflowing the page. Desktop layout is unchanged. */
-            table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+            /* Stacked-card tables: on mobile, collapse each row into a vertical
+               "label: value" card so no horizontal scrolling is required.
+               Desktop layout is unchanged. */
+            table.responsive-table { display: block; width: 100%; white-space: normal; }
+            table.responsive-table thead { display: none; }
+            table.responsive-table tbody { display: block; }
+            table.responsive-table tr { display: block; padding: .55rem 0; }
+            table.responsive-table tr + tr { border-top: 2px solid var(--border); }
+            table.responsive-table td {
+                display: flex; justify-content: space-between; align-items: baseline; gap: .75rem;
+                padding: .25rem .15rem; text-align: right; border: 0; white-space: normal;
+                overflow-wrap: anywhere; min-width: 0; max-width: none;
+            }
+            table.responsive-table td::before {
+                content: attr(data-label); flex: 0 0 auto; font-weight: 600;
+                color: var(--muted); text-align: left; white-space: nowrap;
+            }
+            table.responsive-table td[data-label=""]::before { content: none; }
+            table.responsive-table td:empty { display: none; }
+            /* Any table not yet tagged still falls back to in-box scroll (no page overflow). */
+            table:not(.responsive-table) { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         }
     </style>
 </head>

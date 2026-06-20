@@ -4,7 +4,7 @@
 <div class="card">
     <h1>実行履歴</h1>
     <p>監視の実行ごとの記録です。セールが0件でも記録されます。</p>
-    <table>
+    <table class="responsive-table">
         <thead>
             <tr>
                 <th>実行日時</th>
@@ -18,12 +18,12 @@
         <tbody>
         {% for log in logs %}
         <tr>
-            <td>{{ log.started_at }}</td>
-            <td>{{ log.finished_at or "-" }}</td>
-            <td>{{ log.books_checked }}</td>
-            <td>{{ log.sales_found }}</td>
-            <td>{{ log.notified }}</td>
-            <td>{{ log.status }}{% if log.error_message %} ({{ log.error_message }}){% endif %}</td>
+            <td data-label="実行日時">{{ log.started_at }}</td>
+            <td data-label="終了日時">{{ log.finished_at or "-" }}</td>
+            <td data-label="チェック冊数">{{ log.books_checked }}</td>
+            <td data-label="セール件数">{{ log.sales_found }}</td>
+            <td data-label="通知数">{{ log.notified }}</td>
+            <td data-label="ステータス">{{ log.status }}{% if log.error_message %} ({{ log.error_message }}){% endif %}</td>
         </tr>
         {% else %}
         <tr><td colspan="6">記録なし</td></tr>

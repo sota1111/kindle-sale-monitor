@@ -3,15 +3,15 @@
 {% block content %}
 <div class="card">
     <h1>エラー履歴</h1>
-    <table>
+    <table class="responsive-table">
         <thead><tr><th>発生日時</th><th>URL</th><th>種別</th><th>メッセージ</th></tr></thead>
         <tbody>
         {% for e in errors %}
         <tr>
-            <td>{{ e.occurred_at }}</td>
-            <td>{{ e.url or "-" }}</td>
-            <td>{{ e.error_type or "-" }}</td>
-            <td>{{ e.error_message or "-" }}</td>
+            <td data-label="発生日時">{{ e.occurred_at }}</td>
+            <td data-label="URL">{{ e.url or "-" }}</td>
+            <td data-label="種別">{{ e.error_type or "-" }}</td>
+            <td data-label="メッセージ">{{ e.error_message or "-" }}</td>
         </tr>
         {% else %}
         <tr><td colspan="4">エラー履歴なし</td></tr>
