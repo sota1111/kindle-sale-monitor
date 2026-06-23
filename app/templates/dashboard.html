@@ -3,15 +3,46 @@
 {% block content %}
 <div class="card">
     <h1>ダッシュボード</h1>
-    <ul>
-        <li>登録済み本: <strong>{{ book_count }}</strong> 件</li>
-        <li>未通知セール: <strong>{{ pending_count }}</strong> 件</li>
-    </ul>
-    <form method="post" action="/api/check/all" target="_blank" style="display:inline">
-        <button type="submit" class="btn">手動チェック実行</button>
-    </form>
-    <a href="/books" class="btn btn-secondary" style="margin-left:0.5rem">ほしい本リストを見る</a>
+    <div class="kpi-grid">
+        <div class="kpi">
+            <div class="kpi-value">{{ summary.book_count }}</div>
+            <div class="kpi-label">登録本数</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">{{ summary.sale_record_count }}</div>
+            <div class="kpi-label">価格履歴件数</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">{{ summary.on_sale_now }}</div>
+            <div class="kpi-label">セール中の本</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">{{ summary.all_time_low_hits }}</div>
+            <div class="kpi-label">過去最安更新</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">{{ summary.avg_discount_rate }}%</div>
+            <div class="kpi-label">平均割引率</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">{{ pending_count }}</div>
+            <div class="kpi-label">未通知セール</div>
+        </div>
+    </div>
+    <div style="margin-top:1rem">
+        <form method="post" action="/api/check/all" target="_blank" style="display:inline">
+            <button type="submit" class="btn">手動チェック実行</button>
+        </form>
+        <a href="/books" class="btn btn-secondary" style="margin-left:0.5rem">ほしい本リストを見る</a>
+    </div>
 </div>
+
+<div class="card">
+    <h2>価格推移</h2>
+    <canvas id="trend-chart" height="120"></canvas>
+    <p id="trend-chart-empty" style="display:none;">価格推移データがまだありません。</p>
+</div>
+
 {% if recent_sales %}
 <div class="card">
     <h2>最近のセール（上位5件）</h2>
@@ -50,4 +81,65 @@
     </table>
 </div>
 {% endif %}
+
+<style>
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: .75rem; margin-top: 1rem; }
+.kpi { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
+       padding: .9rem 1rem; text-align: center; }
+.kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--primary); letter-spacing: -.02em; }
+.kpi-label { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+const TREND_COLORS = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2'];
+
+async function loadPriceTrends() {
+    const canvas = document.getElementById('trend-chart');
+    const emptyMsg = document.getElementById('trend-chart-empty');
+    try {
+        const res = await fetch('/api/dashboard/price-trends?limit=5');
+        if (!res.ok) throw new Error('fetch failed');
+        const series = await res.json();
+        const nonEmpty = series.filter(s => s.points && s.points.length);
+        if (!nonEmpty.length) {
+            canvas.style.display = 'none';
+            emptyMsg.style.display = 'block';
+            return;
+        }
+        // Use the longest series' timestamps as the shared x-axis labels.
+        const base = nonEmpty.reduce((a, b) => (b.points.length > a.points.length ? b : a));
+        const labels = base.points.map(p => p.fetched_at.replace('T', ' ').slice(0, 10));
+        const datasets = nonEmpty.map((s, i) => {
+            const byDate = {};
+            s.points.forEach(p => { byDate[p.fetched_at.slice(0, 10)] = p.effective_price; });
+            return {
+                label: s.title,
+                data: labels.map(d => (d in byDate ? byDate[d] : null)),
+                borderColor: TREND_COLORS[i % TREND_COLORS.length],
+                backgroundColor: 'transparent',
+                spanGaps: true,
+                tension: 0.2,
+                pointRadius: 0,
+            };
+        });
+        new Chart(canvas, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: { beginAtZero: false, ticks: { callback: v => v + '円' } },
+                },
+            },
+        });
+    } catch (e) {
+        canvas.style.display = 'none';
+        emptyMsg.style.display = 'block';
+    }
+}
+
+loadPriceTrends();
+</script>
 {% endblock %}

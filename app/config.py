@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     firestore_database_id: str = "(default)"
     local_wishlist_file: str = "wishlist.json"
 
+    # When true, register provisional (sample) price-history data at startup so the
+    # dashboard can be evaluated without a live data source. Local/dev only.
+    seed_sample_data: bool = False
+
     # Amazon Product Advertising API (PA-API 5.0) — real data source.
     # Credentials are provided at deploy time (Cloud Run secrets).
     paapi_access_key: str = ""
