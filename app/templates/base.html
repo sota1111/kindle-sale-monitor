@@ -86,7 +86,10 @@
         @media (max-width: 700px) {
             main { padding: 1.25rem .75rem; }
             .card { padding: 1.1rem; }
-            nav { gap: .15rem; }
+            /* Mobile: move the nav menu to the bottom of the screen (fixed bottom bar). */
+            nav { position: fixed; top: auto; bottom: 0; left: 0; right: 0; gap: .15rem;
+                  box-shadow: 0 -2px 8px rgba(0,0,0,.18); }
+            body { padding-bottom: 60px; }
             /* Stacked-card tables: on mobile, collapse each row into a vertical
                "label: value" card so no horizontal scrolling is required.
                Desktop layout is unchanged. */
