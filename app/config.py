@@ -24,9 +24,17 @@ class Settings(BaseSettings):
     paapi_host: str = "webservices.amazon.co.jp"
     paapi_region: str = "us-west-2"
     paapi_marketplace: str = "www.amazon.co.jp"
-    # Data source selection: auto | paapi | scrape.
+    # Data source selection: auto | paapi | scrape | browser.
     # "auto" uses PA-API when credentials are configured, otherwise scraping.
+    # "browser" drives a logged-in local Chromium (Playwright) over each /dp/<asin>
+    # page; it is opt-in only (auto never selects it) and is a local-PC source.
     data_source: str = "auto"
+
+    # Logged-in local browser source (Playwright persistent profile).
+    # First login is a one-off headed run (BROWSER_HEADLESS=false); afterwards the
+    # saved profile cookies are reused headless.
+    browser_profile_dir: str = "~/.kindle-monitor/browser-profile"
+    browser_headless: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

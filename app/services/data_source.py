@@ -1,9 +1,11 @@
 """Data-source dispatcher.
 
-Selects between the Amazon PA-API 5.0 client (the real data source) and the legacy
-sale-bon.com scraper based on ``settings.data_source`` and whether PA-API credentials
-are configured. Both back-ends return the same ``(list[SaleItem], ScrapeDiagnostics)``
-shape so the checker is agnostic to the source.
+Selects between the Amazon PA-API 5.0 client (the real data source), the legacy
+sale-bon.com scraper, and a logged-in local browser (Playwright) source based on
+``settings.data_source`` and whether PA-API credentials are configured. All back-ends
+return the same ``(list[SaleItem], ScrapeDiagnostics)`` shape so the checker is agnostic
+to the source. ``browser`` is opt-in only (``DATA_SOURCE=browser``); ``auto`` never
+selects it.
 """
 
 import logging
@@ -22,7 +24,9 @@ def _resolve_source(settings: Any) -> str:
         return "paapi"
     if choice == "scrape":
         return "scrape"
-    # auto
+    if choice == "browser":
+        return "browser"
+    # auto (browser is opt-in only and never selected here)
     return "paapi" if paapi_configured(settings) else "scrape"
 
 
@@ -41,6 +45,16 @@ def fetch_sale_items_with_diagnostics(
         from app.services.paapi_client import fetch_paapi_with_diagnostics
 
         return fetch_paapi_with_diagnostics(
+            books=books,
+            interval_seconds=interval_seconds,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+
+    if source == "browser":
+        from app.services.browser_source import fetch_browser_with_diagnostics
+
+        return fetch_browser_with_diagnostics(
             books=books,
             interval_seconds=interval_seconds,
             max_retries=max_retries,
