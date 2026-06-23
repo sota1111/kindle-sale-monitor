@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import books, check, history, run, settings
+from app.api import dashboard as dashboard_api
 from app.api import scheduler as scheduler_api
 from app.auth import AuthMiddleware
 from app.config import settings as app_settings
@@ -64,6 +65,20 @@ def _seed_books():
         db.close()
 
 
+def _seed_sample_data():
+    # Provisional (sample) price-history data for dashboard evaluation. Local/dev
+    # only — gated behind SEED_SAMPLE_DATA so it never lands in production by default.
+    db = SessionLocal()
+    try:
+        from app.services.sample_data import seed_sample_data
+
+        seed_sample_data(db)
+    except Exception as e:  # noqa: BLE001 - never let seeding crash startup
+        logging.error("Sample data seeding failed: %s", e)
+    finally:
+        db.close()
+
+
 def _rehydrate_from_firestore():
     # Cloud Run's SQLite is ephemeral; restore durable domain data from Firestore
     # before seeding so UI/API-created records survive container restarts.
@@ -79,6 +94,8 @@ def _rehydrate_from_firestore():
 _init_default_settings()
 _rehydrate_from_firestore()
 _seed_books()
+if app_settings.seed_sample_data:
+    _seed_sample_data()
 
 
 @asynccontextmanager
@@ -137,6 +154,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(books.router)
 app.include_router(check.router)
+app.include_router(dashboard_api.router)
 app.include_router(history.router)
 app.include_router(settings.router)
 app.include_router(run.router)
@@ -155,8 +173,11 @@ def healthz():
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
+    from app.api.dashboard import build_summary
+
     book_count = db.query(Book).count()
     pending_count = db.query(SaleHistory).filter(SaleHistory.notified.is_(False)).count()
+    summary = build_summary(db)
     recent_sales = db.query(SaleHistory).order_by(SaleHistory.fetched_at.desc()).limit(5).all()
     recent_notifications = (
         db.query(NotificationHistory)
@@ -170,6 +191,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         {
             "book_count": book_count,
             "pending_count": pending_count,
+            "summary": summary,
             "recent_sales": recent_sales,
             "recent_notifications": recent_notifications,
         },

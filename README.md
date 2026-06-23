@@ -140,6 +140,22 @@ cp wishlist.example.json wishlist.json
 
 `wishlist.json` を編集して監視したい本を登録してください。
 
+### 4.1. 仮（サンプル）データの登録（ダッシュボード評価用）
+
+実データ源（PA-API等）を用意しなくても、ダッシュボードの表示を評価できるよう、
+仮の価格推移データを登録できます。
+
+```bash
+# 仮の価格推移データを登録（冪等。登録済みの本はスキップ）
+python scripts/seed_sample_data.py
+# 仮データを再生成する場合
+python scripts/seed_sample_data.py --force
+```
+
+または `.env` で `SEED_SAMPLE_DATA=true` を設定すると、起動時に自動で登録されます
+（ローカル/開発専用。本番では `false` のままにしてください）。仮データの行は
+`sale_type="sample"` で識別され、実データには影響しません。
+
 ### 5. アプリの起動
 
 ```bash

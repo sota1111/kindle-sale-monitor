@@ -1,55 +1,66 @@
 # Worker Report
 
 ## Summary
-SOT-1140 initial task check. Codex CLI was non-responsive (usage-limit cooldown,
-exit 75) so under the Worker Non-Response Fallback Policy Claude Code performed the
-task check directly.
+Initial TASK CHECK for SOT-1153「仮データ登録とダッシュボード改修」(kindle-sale-monitor).
 
-Verdict: **ACTIONABLE for IMPLEMENT.** Human approved Q1=① Playwright 永続プロファイル,
-Q2=① 各書籍の `/dp/<asin>` 商品ページ巡回, Q3=実装してください. Issue is currently In Progress.
+**Worker non-response disclosure:** Codex CLI was non-responsive for this task check —
+`scripts/ai/run_codex.sh` exited with the dedicated non-response code `75`
+(`CODEX_COOLDOWN_ACTIVE`, usage-limit cooldown until epoch 1782609660 ≈ ~4 days out).
+Per the Worker Non-Response Fallback Policy, Claude Code performed this task check directly.
 
-Seam findings:
-- `app/services/data_source.py` `_resolve_source(settings)` switches on `settings.data_source`
-  (`auto|paapi|scrape`); `auto` → `paapi` when `paapi_configured()` else `scrape`.
-  `fetch_sale_items_with_diagnostics(books, interval_seconds, max_retries, timeout)` is the
-  single entry the checker calls; every backend returns `(list[SaleItem], ScrapeDiagnostics)`.
-- `SaleItem` / `ScrapeDiagnostics` / `PageOutcome` / `ScrapeFailureCategory` live in
-  `app/services/scraper.py`. PA-API client (`paapi_client.py`) is the cleanest template for a
-  new per-ASIN source: it builds SaleItem with title/asin/amazon_url/price/discount_rate/
-  point_rate/effective_price/is_free/sale_type/display_text and appends a `PageOutcome` per unit.
-- ASIN list: `_collect_asins(books)` in paapi_client.py (book.asin or extract from amazon_url,
-  skip `enabled=False`). Books come from the wishlist (`settings.local_wishlist_file`).
-- Settings: `app/config.py` `Settings` — add `browser` as a valid `data_source` value and new
-  env fields for the browser source (profile dir, headless flag).
-- Playwright is NOT a dependency yet (only httpx + beautifulsoup4) → must be added to pyproject.
+**Verdict: actionable (YES).** Single cohesive feature: seed provisional price-history sample
+data + revamp the dashboard to visualize it.
 
-## Changed Files
-- none (read-only check; this report is the audit sink for the fallback)
+## Architecture findings
+- Stack: FastAPI + SQLAlchemy + Jinja2 server-rendered templates (no SPA). SQLite locally
+  (`kindle_monitor.db`), Firestore mirror on Cloud Run.
+- Price/sale data model: `app/models/sale_history.py` `SaleHistory` (book_id FK, price,
+  effective_price, discount_rate, point_rate, is_cheapest, is_free, fetched_at, notified, ...).
+- Existing endpoints (`app/api/history.py`): `GET /api/sales`, `GET /api/books/{id}/price-history`
+  (schema `PriceHistoryPoint`), `GET /api/notifications`, `GET /api/monitor-logs`.
+- Dashboard surface: `app/main.py` `GET /` → `app/templates/dashboard.html`. Currently minimal:
+  book_count, pending_count, recent_sales (5), recent_notifications (5). NO chart, NO aggregates.
+- Per-book price chart already exists in `book_detail.html` (Chart.js v4 via CDN, fetches
+  `/api/books/{id}/price-history`).
+- Seed mechanism: `app/services/seeder.py` `seed_books_from_wishlist()` (Books only, from
+  `wishlist.json`); run at startup via `_seed_books()` in `main.py`. NO sale-history seeder exists.
+- Config: `app/config.py` pydantic-settings (`data_source` auto|paapi|scrape|browser, etc.).
+- i18n: client-side ja→en dictionary in `app/templates/base.html` (SOT-953); new UI strings must
+  be added to the `DICT`.
+
+## Recommended approach (file list)
+1. `app/services/sample_data.py` — idempotent `seed_sample_data(db)` generating ~90 days of
+   realistic `SaleHistory` price-trend points for a few books (marker `sale_type="sample"`).
+2. `app/config.py` — add `seed_sample_data: bool = False` (env `SEED_SAMPLE_DATA`).
+3. `app/main.py` — `_seed_sample_data()` startup hook gated on the flag; enrich `GET /` context
+   with aggregate KPIs.
+4. `scripts/seed_sample_data.py` — CLI to register provisional data on demand.
+5. `app/api/dashboard.py` (or extend history.py) — `GET /api/dashboard/summary` +
+   `GET /api/dashboard/price-trends` (multi-book series for the chart).
+6. `app/templates/dashboard.html` — KPI cards + multi-series price-trend Chart.js + "値下げ中" table.
+7. `app/templates/base.html` — new i18n DICT entries.
+8. `tests/test_sample_data.py`, `tests/test_api_dashboard.py` — follow existing test patterns.
+9. `.env.example` / `README.md` — document `SEED_SAMPLE_DATA`.
 
 ## Commands Run
-- Inspected data_source.py / scraper.py / paapi_client.py / config.py (read-only).
-- pytest baseline NOT run by Codex (cooldown); Claude will establish baseline before implementing.
+- `bash scripts/ai/run_codex.sh` → exit 75 (cooldown, non-responsive).
+- Repo inspection (ls/cat/grep) by Claude Code fallback.
 
-## Acceptance Criteria
-- [x] Issue is actionable for IMPLEMENT
-- [x] data_source dispatch seam identified
-- [x] SaleItem/ScrapeDiagnostics contract documented
-- [x] ASIN/book-list source identified
-- [x] settings/env injection point identified
-- [ ] test baseline established (deferred to Claude pre-implementation)
+## Acceptance Criteria (derived)
+- [x] Issue is actionable
+- [x] Implementation surface located
+- [x] Quality gate commands identified
+
+## Quality gate commands
+- Lint: `ruff check app tests`
+- Typecheck: `mypy app`
+- Test: `pytest` (pytest + pytest-asyncio; SQLite test DBs per module)
+- No npm/e2e (pure Python project).
 
 ## Risks
-- Playwright in DevContainer needs `playwright install chromium` + OS deps; headed first-login is
-  a local-only operation (Cloud Run cannot run headed). Document as local-only.
-- Automating a logged-in Amazon session touches Amazon TOS / bot detection; pace via existing
-  interval knobs. Operational decision is the human's.
-- Browser source must degrade gracefully (never raise) like the other sources, returning
-  PageOutcome failures instead.
-
-## Fallback Disclosure (audit)
-- Non-responsive worker: Codex CLI.
-- Detected failure mode: exit code 75 (usage-limit cooldown until epoch 1782609660).
-- Claude Code performed the task check directly per the Worker Non-Response Fallback Policy.
+- Startup seeding must be flag-gated so provisional data never lands in production unintentionally.
+- New aggregate endpoints must tolerate empty data (no history) gracefully.
+- i18n: dynamic DB values must not collide with DICT keys (existing convention already handles this).
 
 ## Next Action
 READY_FOR_REVIEW
