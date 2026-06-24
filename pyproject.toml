@@ -27,9 +27,18 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "pytest-playwright>=0.5.0",
     "ruff>=0.4.0",
     "mypy>=1.9.0",
 ]
+
+[tool.pytest.ini_options]
+# 管理UIの Playwright E2E は `e2e` マーカーで分離し、既定の `pytest` 実行からは除外する（SOT-1154）。
+# E2E のみ実行する場合は `pytest -m e2e`。これにより既存ユニット/統合テストはサーバ起動なしで従来通り動く。
+markers = [
+    "e2e: end-to-end browser tests driving the admin dashboard via pytest-playwright (requires a live server)",
+]
+addopts = "-m 'not e2e'"
 
 [build-system]
 requires = ["hatchling"]
