@@ -86,9 +86,13 @@
         @media (max-width: 700px) {
             main { padding: 1.25rem .75rem; }
             .card { padding: 1.1rem; }
-            /* Mobile: move the nav menu to the bottom of the screen (fixed bottom bar). */
-            nav { position: fixed; top: auto; bottom: 0; left: 0; right: 0; gap: .15rem;
-                  box-shadow: 0 -2px 8px rgba(0,0,0,.18); }
+            /* Mobile: keep the title (brand) and logout in the top bar; move ONLY the
+               navigation menu links to a fixed bar at the bottom of the screen. */
+            nav { gap: .15rem; }
+            .nav-links { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 20;
+                         background: linear-gradient(90deg, #1e293b, #0f172a);
+                         padding: .4rem .5rem; gap: .15rem;
+                         box-shadow: 0 -2px 8px rgba(0,0,0,.18); }
             body { padding-bottom: 60px; }
             /* Stacked-card tables: on mobile, collapse each row into a vertical
                "label: value" card so no horizontal scrolling is required.
