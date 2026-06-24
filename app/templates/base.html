@@ -48,8 +48,9 @@
         .nav-ico { width: 22px; height: 22px; display: block; flex-shrink: 0; }
         nav form { margin-left: auto; flex-shrink: 0; }
         nav .nav-logout { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
-                          color: #e2e8f0; cursor: pointer; font-size: .85rem; font-family: inherit;
-                          padding: .35rem .75rem; border-radius: 7px; transition: background .15s; }
+                          color: #e2e8f0; cursor: pointer; font-family: inherit;
+                          display: inline-flex; align-items: center; justify-content: center;
+                          padding: .35rem; border-radius: 7px; transition: background .15s; }
         nav .nav-logout:hover { background: rgba(255,255,255,.18); }
         main { padding: 1.75rem 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; }
         h1 { font-size: 1.5rem; letter-spacing: -.02em; }
@@ -149,7 +150,9 @@
             <button type="button" data-lang-btn="en">EN</button>
         </div>
         <form method="post" action="/logout" style="margin-left:.5rem">
-            <button type="submit" class="nav-logout">ログアウト</button>
+            <button type="submit" class="nav-logout" title="ログアウト" aria-label="ログアウト">
+                <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
         </form>
     </nav>
     <main>
