@@ -342,35 +342,55 @@ def book_delete_form(book_id: int, db: Session = Depends(get_db)):
     return RedirectResponse(url="/books", status_code=303)
 
 
-@app.get("/sales", response_class=HTMLResponse)
-def sales_page(request: Request, db: Session = Depends(get_db)):
+@app.get("/history", response_class=HTMLResponse)
+def history_page(request: Request, db: Session = Depends(get_db)):
+    """Consolidated history page: sales / notifications / runs / silent-log / errors
+    rendered as in-page tabs (SOT-1185)."""
+    from app.api.history import get_recent_monitor_logs
+
     sales = db.query(SaleHistory).order_by(SaleHistory.fetched_at.desc()).limit(100).all()
-    return templates.TemplateResponse(request, "sale_history.html", {"sales": sales})
-
-
-@app.get("/notifications", response_class=HTMLResponse)
-def notifications_page(request: Request, db: Session = Depends(get_db)):
-    notifs = (
+    notifications = (
         db.query(NotificationHistory)
         .order_by(NotificationHistory.notified_at.desc())
         .limit(100)
         .all()
     )
-    return templates.TemplateResponse(request, "notifications.html", {"notifications": notifs})
-
-
-@app.get("/runs", response_class=HTMLResponse)
-def run_history_page(request: Request, db: Session = Depends(get_db)):
-    from app.api.history import get_recent_monitor_logs
-
     logs = get_recent_monitor_logs(db, 100)
-    return templates.TemplateResponse(request, "run_history.html", {"logs": logs})
+    skip_logs = db.query(SkipLog).order_by(SkipLog.skipped_at.desc()).limit(100).all()
+    errors = db.query(ErrorLog).order_by(ErrorLog.occurred_at.desc()).limit(100).all()
+    return templates.TemplateResponse(
+        request,
+        "history.html",
+        {
+            "sales": sales,
+            "notifications": notifications,
+            "logs": logs,
+            "skip_logs": skip_logs,
+            "errors": errors,
+        },
+    )
 
 
-@app.get("/monitoring", response_class=HTMLResponse)
-def monitoring_page(request: Request, db: Session = Depends(get_db)):
-    logs = db.query(SkipLog).order_by(SkipLog.skipped_at.desc()).limit(100).all()
-    return templates.TemplateResponse(request, "monitoring_history.html", {"logs": logs})
+# Old per-page history routes now redirect to the consolidated /history page (SOT-1185).
+# 307 preserves the GET method and keeps existing links/bookmarks working.
+@app.get("/sales")
+def sales_page() -> RedirectResponse:
+    return RedirectResponse(url="/history#sales", status_code=307)
+
+
+@app.get("/notifications")
+def notifications_page() -> RedirectResponse:
+    return RedirectResponse(url="/history#notifications", status_code=307)
+
+
+@app.get("/runs")
+def run_history_page() -> RedirectResponse:
+    return RedirectResponse(url="/history#runs", status_code=307)
+
+
+@app.get("/monitoring")
+def monitoring_page() -> RedirectResponse:
+    return RedirectResponse(url="/history#monitoring", status_code=307)
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -404,10 +424,9 @@ async def settings_update_form(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url="/settings", status_code=303)
 
 
-@app.get("/errors", response_class=HTMLResponse)
-def error_logs_page(request: Request, db: Session = Depends(get_db)):
-    errors = db.query(ErrorLog).order_by(ErrorLog.occurred_at.desc()).limit(100).all()
-    return templates.TemplateResponse(request, "error_logs.html", {"errors": errors})
+@app.get("/errors")
+def error_logs_page() -> RedirectResponse:
+    return RedirectResponse(url="/history#errors", status_code=307)
 
 
 # Identity Toolkit REST endpoint for server-side email/password verification (案1).

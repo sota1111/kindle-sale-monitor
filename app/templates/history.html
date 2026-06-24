@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}履歴{% endblock %}
+{% block content %}
+<style>
+    .history-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1rem; }
+    .history-tab { background: var(--surface); border: 1px solid var(--border);
+                   border-radius: 8px; padding: .45rem .85rem; cursor: pointer;
+                   font-size: .88rem; font-weight: 600; font-family: inherit; color: var(--muted);
+                   transition: background .15s, color .15s, border-color .15s; }
+    .history-tab:hover { background: #f8fafc; color: var(--ink); }
+    .history-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .history-panel { display: none; }
+    .history-panel.active { display: block; }
+</style>
+<div class="card">
+    <h1>履歴</h1>
+    <div class="history-tabs" role="tablist">
+        <button type="button" class="history-tab active" data-tab="sales">セール履歴</button>
+        <button type="button" class="history-tab" data-tab="notifications">通知履歴</button>
+        <button type="button" class="history-tab" data-tab="runs">実行履歴</button>
+        <button type="button" class="history-tab" data-tab="monitoring">非通知ログ</button>
+        <button type="button" class="history-tab" data-tab="errors">エラー履歴</button>
+    </div>
+
+    <div class="history-panel active" data-panel="sales">
+        <h2>セール履歴</h2>
+        <table class="responsive-table">
+            <thead><tr><th>取得日時</th><th>本ID</th><th>巻</th><th>割引率</th><th>還元率</th><th>価格</th><th>最安値</th><th>通知</th></tr></thead>
+            <tbody>
+            {% for sale in sales %}
+            <tr>
+                <td data-label="取得日時">{{ sale.fetched_at }}</td>
+                <td data-label="本ID"><a href="/books/{{ sale.book_id }}">{{ sale.book_id }}</a></td>
+                <td data-label="巻">{{ sale.volume or "-" }}</td>
+                <td data-label="割引率">{{ sale.discount_rate or 0 }}%</td>
+                <td data-label="還元率">{{ sale.point_rate or 0 }}%</td>
+                <td data-label="価格">{{ sale.price or "-" }}円</td>
+                <td data-label="最安値">{{ "○" if sale.is_cheapest else "-" }}</td>
+                <td data-label="通知">{{ "通知済" if sale.notified else "-" }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8">セール履歴なし</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="history-panel" data-panel="notifications">
+        <h2>通知履歴</h2>
+        <table class="responsive-table">
+            <thead><tr><th>通知日時</th><th>本ID</th><th>理由</th><th>条件マッチ詳細</th><th>成功</th></tr></thead>
+            <tbody>
+            {% for n in notifications %}
+            <tr>
+                <td data-label="通知日時">{{ n.notified_at }}</td>
+                <td data-label="本ID"><a href="/books/{{ n.book_id }}">{{ n.book_id }}</a></td>
+                <td data-label="理由">{{ n.reason or "-" }}</td>
+                <td data-label="条件マッチ詳細">{{ n.matched_conditions or "-" }}</td>
+                <td data-label="成功">{{ "○" if n.success else "✗" }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">通知履歴なし</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="history-panel" data-panel="runs">
+        <h2>実行履歴</h2>
+        <p>監視の実行ごとの記録です。セールが0件でも記録されます。</p>
+        <table class="responsive-table">
+            <thead>
+                <tr>
+                    <th>実行日時</th>
+                    <th>終了日時</th>
+                    <th>チェック冊数</th>
+                    <th>セール件数</th>
+                    <th>通知数</th>
+                    <th>ステータス</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in logs %}
+            <tr>
+                <td data-label="実行日時">{{ log.started_at }}</td>
+                <td data-label="終了日時">{{ log.finished_at or "-" }}</td>
+                <td data-label="チェック冊数">{{ log.books_checked }}</td>
+                <td data-label="セール件数">{{ log.sales_found }}</td>
+                <td data-label="通知数">{{ log.notified }}</td>
+                <td data-label="ステータス">{{ log.status }}{% if log.error_message %} ({{ log.error_message }}){% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">記録なし</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="history-panel" data-panel="monitoring">
+        <h2>監視履歴（非通知）</h2>
+        <p>条件に一致せず通知しなかった記録です。</p>
+        <table class="responsive-table">
+            <thead>
+                <tr>
+                    <th>日時</th>
+                    <th>本</th>
+                    <th>非通知理由</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in skip_logs %}
+            <tr>
+                <td data-label="日時">{{ log.skipped_at }}</td>
+                <td data-label="本"><a href="/books/{{ log.book_id }}">{{ log.book_id }}</a></td>
+                <td data-label="非通知理由">{{ log.skip_reason }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">記録なし</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="history-panel" data-panel="errors">
+        <h2>エラー履歴</h2>
+        <table class="responsive-table">
+            <thead><tr><th>発生日時</th><th>URL</th><th>種別</th><th>メッセージ</th></tr></thead>
+            <tbody>
+            {% for e in errors %}
+            <tr>
+                <td data-label="発生日時">{{ e.occurred_at }}</td>
+                <td data-label="URL">{{ e.url or "-" }}</td>
+                <td data-label="種別">{{ e.error_type or "-" }}</td>
+                <td data-label="メッセージ">{{ e.error_message or "-" }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">エラー履歴なし</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    var tabs = document.querySelectorAll(".history-tab");
+    var panels = document.querySelectorAll(".history-panel");
+    function activate(name) {
+        tabs.forEach(function (t) { t.classList.toggle("active", t.getAttribute("data-tab") === name); });
+        panels.forEach(function (p) { p.classList.toggle("active", p.getAttribute("data-panel") === name); });
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, "", "#" + name);
+        }
+    }
+    tabs.forEach(function (t) {
+        t.addEventListener("click", function () { activate(t.getAttribute("data-tab")); });
+    });
+    var hash = (window.location.hash || "").replace("#", "");
+    if (hash && document.querySelector('.history-panel[data-panel="' + hash + '"]')) {
+        activate(hash);
+    }
+})();
+</script>
+{% endblock %}

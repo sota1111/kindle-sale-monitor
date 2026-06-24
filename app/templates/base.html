@@ -39,10 +39,13 @@
                     width: 26px; height: 26px; border-radius: 7px;
                     background: linear-gradient(135deg, var(--primary), #f59e0b);
                     font-size: .85rem; }
-        nav a { color: #cbd5e1; text-decoration: none; padding: .35rem .6rem;
-                border-radius: 7px; font-size: .9rem; white-space: nowrap;
+        nav a { color: #cbd5e1; text-decoration: none; padding: .3rem .55rem;
+                border-radius: 7px; font-size: .72rem; white-space: nowrap;
+                display: inline-flex; flex-direction: column; align-items: center;
+                gap: .15rem; line-height: 1.1;
                 transition: background .15s, color .15s; }
         nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+        .nav-ico { width: 22px; height: 22px; display: block; flex-shrink: 0; }
         nav form { margin-left: auto; flex-shrink: 0; }
         nav .nav-logout { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
                           color: #e2e8f0; cursor: pointer; font-size: .85rem; font-family: inherit;
@@ -91,9 +94,11 @@
             nav { gap: .15rem; }
             .nav-links { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 20;
                          background: linear-gradient(90deg, #1e293b, #0f172a);
-                         padding: .4rem .5rem; gap: .15rem;
+                         padding: .35rem .25rem; gap: .15rem;
+                         justify-content: space-around; overflow-x: visible;
                          box-shadow: 0 -2px 8px rgba(0,0,0,.18); }
-            body { padding-bottom: 60px; }
+            .nav-links a { flex: 1 1 0; font-size: .68rem; padding: .25rem .15rem; }
+            body { padding-bottom: 66px; }
             /* Stacked-card tables: on mobile, collapse each row into a vertical
                "label: value" card so no horizontal scrolling is required.
                Desktop layout is unchanged. */
@@ -122,14 +127,22 @@
     <nav>
         <span class="nav-brand"><span class="nav-mark">📚</span>Kindle Sale Monitor</span>
         <div class="nav-links">
-            <a href="/">ダッシュボード</a>
-            <a href="/books">ほしい本リスト</a>
-            <a href="/sales">セール履歴</a>
-            <a href="/runs">実行履歴</a>
-            <a href="/notifications">通知履歴</a>
-            <a href="/monitoring">非通知ログ</a>
-            <a href="/settings">設定</a>
-            <a href="/errors">エラー履歴</a>
+            <a href="/">
+                <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
+                <span>ダッシュボード</span>
+            </a>
+            <a href="/books">
+                <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H19"/><path d="M8 7h7"/><path d="M8 10.5h7"/></svg>
+                <span>ほしい本リスト</span>
+            </a>
+            <a href="/history">
+                <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 1 2.6 6.1"/><path d="M3.5 18v-4h4"/><path d="M12 7.5V12l3 2"/></svg>
+                <span>履歴</span>
+            </a>
+            <a href="/settings">
+                <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.1a2 2 0 0 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 0 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.7 1.7 0 0 0-1.4.9z"/></svg>
+                <span>設定</span>
+            </a>
         </div>
         <div class="lang-toggle" role="group" aria-label="Language">
             <button type="button" data-lang-btn="ja">JP</button>
@@ -159,6 +172,7 @@
             "ダッシュボード": "Dashboard",
             "ほしい本リスト": "Wishlist",
             "ほしい本リストを見る": "View wishlist",
+            "履歴": "History",
             "セール履歴": "Sale history",
             "実行履歴": "Run history",
             "通知履歴": "Notifications",
