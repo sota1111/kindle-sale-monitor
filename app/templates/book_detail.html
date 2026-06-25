@@ -12,7 +12,7 @@
 </div>
 <div class="card">
     <h2>価格推移</h2>
-    <canvas id="price-chart" height="120"></canvas>
+    <div class="chart-wrap"><canvas id="price-chart"></canvas></div>
     <p id="price-chart-empty" style="display:none;">価格履歴がまだありません。</p>
 </div>
 <div class="card">
@@ -96,6 +96,12 @@
     </form>
 </div>
 
+<style>
+.chart-wrap { position: relative; width: 100%; height: 320px; }
+@media (max-width: 700px) {
+    .chart-wrap { height: 260px; }
+}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 const bookId = {{ book.id }};
@@ -138,6 +144,7 @@ async function loadPriceHistory() {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: {
                         beginAtZero: false,
