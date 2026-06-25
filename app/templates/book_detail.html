@@ -75,38 +75,32 @@
 
     <h3>条件を追加</h3>
     <form id="condition-form" onsubmit="return addCondition(event)">
-        <table>
-            <tr>
-                <th>名前（任意）</th>
-                <td><input type="text" id="cond-name" placeholder="例: 50%+CB"></td>
-            </tr>
-            <tr>
-                <th>最低割引率 (%)</th>
-                <td><input type="number" id="cond-min-discount" min="0" max="100" placeholder="例: 50"></td>
-            </tr>
-            <tr>
-                <th>キャッシュバック必須</th>
-                <td><input type="checkbox" id="cond-cashback-only"></td>
-            </tr>
-            <tr>
-                <th>最低CB率 (%)</th>
-                <td><input type="number" id="cond-min-cashback" min="0" max="100" placeholder="例: 20"></td>
-            </tr>
-            <tr>
-                <th>対象巻（カンマ区切り、例: 1,2,3 または latest）</th>
-                <td><input type="text" id="cond-volume-filter" placeholder="空欄=全巻"></td>
-            </tr>
-            <tr>
-                <th>過去最安更新のみ</th>
-                <td><input type="checkbox" id="cond-cheapest-only"></td>
-            </tr>
-            <tr>
-                <th>無料のみ</th>
-                <td><input type="checkbox" id="cond-free-only"></td>
-            </tr>
-        </table>
-        <br>
-        <button type="submit" class="btn">条件を追加</button>
+        <div class="field-grid">
+            <div class="field-group">
+                <label class="field-label" for="cond-name">名前（任意）</label>
+                <input class="field" type="text" id="cond-name" placeholder="例: 50%+CB">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="cond-min-discount">最低割引率 (%)</label>
+                <input class="field" type="number" id="cond-min-discount" min="0" max="100" placeholder="例: 50">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="cond-min-cashback">最低CB率 (%)</label>
+                <input class="field" type="number" id="cond-min-cashback" min="0" max="100" placeholder="例: 20">
+            </div>
+            <div class="field-group field-group-full">
+                <label class="field-label" for="cond-volume-filter">対象巻（カンマ区切り、例: 1,2,3 または latest）</label>
+                <input class="field" type="text" id="cond-volume-filter" placeholder="空欄=全巻">
+            </div>
+        </div>
+        <div class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="cond-cashback-only"><span>キャッシュバック必須</span></label>
+            <label class="toggle"><input type="checkbox" id="cond-cheapest-only"><span>過去最安更新のみ</span></label>
+            <label class="toggle"><input type="checkbox" id="cond-free-only"><span>無料のみ</span></label>
+        </div>
+        <div style="margin-top:1rem">
+            <button type="submit" class="btn">条件を追加</button>
+        </div>
     </form>
 </div>
 

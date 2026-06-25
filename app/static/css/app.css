@@ -149,6 +149,22 @@ textarea.field { min-height: 4.5rem; resize: vertical; }
     .book-cover { flex-basis: 96px; width: 96px; height: 137px; }
 }
 
+/* --- Form field groups & toggles (SOT-1249 案C). --- */
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+              gap: 1rem; }
+.field-group { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.field-group-full { grid-column: 1 / -1; }
+.field-label { font-size: .85rem; font-weight: 600; color: var(--muted); }
+.field-hint { font-size: .75rem; color: var(--muted); }
+.toggle-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+.toggle { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .8rem;
+          border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+          cursor: pointer; font-size: .9rem; user-select: none;
+          transition: border-color .15s, background .15s; }
+.toggle:hover { border-color: var(--primary); }
+.toggle input { width: 1.05rem; height: 1.05rem; accent-color: var(--primary); cursor: pointer; }
+.toggle:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+
 @media (max-width: 700px) {
     main { padding: 1.25rem .75rem; }
     .card { padding: 1.1rem; }
