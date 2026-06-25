@@ -117,6 +117,38 @@ textarea.field { min-height: 4.5rem; resize: vertical; }
    with maintainAspectRatio:false doesn't collapse on mobile (SOT-1247). */
 .chart-wrap { position: relative; width: 100%; height: 320px; }
 
+/* --- Badges & chips (SOT-1249 案B): status pills for tables / meta. --- */
+.badge { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .55rem;
+         border-radius: 999px; font-size: .78rem; font-weight: 600; line-height: 1.4;
+         white-space: nowrap; }
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-muted { background: var(--surface-muted); color: var(--muted); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.chip { display: inline-flex; align-items: center; padding: .15rem .55rem; border-radius: 8px;
+        font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.chip-discount { background: var(--warning-soft); color: #b45309; }
+.chip-discount.is-zero { background: var(--surface-muted); color: var(--muted); font-weight: 600; }
+
+/* --- book_detail header (SOT-1249 案B): cover + meta grid. --- */
+.detail-header { display: flex; gap: 1.5rem; align-items: flex-start; }
+.book-cover { flex: 0 0 132px; width: 132px; height: 188px; border-radius: 10px;
+              overflow: hidden; border: 1px solid var(--border); background: var(--surface-muted);
+              box-shadow: var(--shadow-sm); }
+.book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-fallback { width: 100%; height: 100%; display: flex; align-items: center;
+                  justify-content: center; font-size: 3rem; color: var(--muted); }
+.detail-meta { flex: 1 1 0; min-width: 0; }
+.detail-meta h1 { margin-top: 0; }
+.meta-grid { margin: .75rem 0 0; display: grid; grid-template-columns: auto 1fr;
+             gap: .35rem 1rem; }
+.meta-grid > div { display: contents; }
+.meta-grid dt { color: var(--muted); font-size: .85rem; font-weight: 600; }
+.meta-grid dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+    .detail-header { gap: 1rem; }
+    .book-cover { flex-basis: 96px; width: 96px; height: 137px; }
+}
+
 @media (max-width: 700px) {
     main { padding: 1.25rem .75rem; }
     .card { padding: 1.1rem; }

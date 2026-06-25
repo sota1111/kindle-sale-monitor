@@ -1,14 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ book.title }} - 詳細{% endblock %}
 {% block content %}
-<div class="card">
-    <h1>{{ book.title }}</h1>
-    <p>作者: {{ book.author or "-" }}</p>
-    <p>出版社: {{ book.publisher or "-" }}</p>
-    <p>ASIN: {{ book.asin or "-" }}</p>
-    <p>Amazon URL: {% if book.amazon_url %}<a href="{{ book.amazon_url }}">{{ book.amazon_url }}</a>{% else %}-{% endif %}</p>
-    <p>sale-bon URL: {% if book.sale_bon_url %}<a href="{{ book.sale_bon_url }}">{{ book.sale_bon_url }}</a>{% else %}-{% endif %}</p>
-    <p>有効: {{ "有効" if book.enabled else "無効" }}</p>
+<div class="card detail-header">
+    <div class="book-cover">
+        {% if book.asin %}
+        <img src="https://images-na.ssl-images-amazon.com/images/P/{{ book.asin }}.09.LZZZZZZZ.jpg"
+             alt="{{ book.title }}"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="cover-fallback" style="display:none;">📚</div>
+        {% else %}
+        <div class="cover-fallback">📚</div>
+        {% endif %}
+    </div>
+    <div class="detail-meta">
+        <h1>{{ book.title }}</h1>
+        <dl class="meta-grid">
+            <div><dt>作者</dt><dd>{{ book.author or "-" }}</dd></div>
+            <div><dt>出版社</dt><dd>{{ book.publisher or "-" }}</dd></div>
+            <div><dt>ASIN</dt><dd>{{ book.asin or "-" }}</dd></div>
+            <div><dt>Amazon URL</dt><dd>{% if book.amazon_url %}<a href="{{ book.amazon_url }}">{{ book.amazon_url }}</a>{% else %}-{% endif %}</dd></div>
+            <div><dt>sale-bon URL</dt><dd>{% if book.sale_bon_url %}<a href="{{ book.sale_bon_url }}">{{ book.sale_bon_url }}</a>{% else %}-{% endif %}</dd></div>
+            <div><dt>有効</dt><dd>{% if book.enabled %}<span class="badge badge-success">有効</span>{% else %}<span class="badge badge-muted">無効</span>{% endif %}</dd></div>
+        </dl>
+    </div>
 </div>
 <div class="card">
     <h2>価格推移</h2>
@@ -24,11 +38,11 @@
         <tr>
             <td data-label="取得日時">{{ sale.fetched_at }}</td>
             <td data-label="巻">{{ sale.volume or "-" }}</td>
-            <td data-label="割引率">{{ sale.discount_rate or 0 }}%</td>
+            <td data-label="割引率"><span class="chip chip-discount{{ ' is-zero' if not sale.discount_rate }}">{{ sale.discount_rate or 0 }}%</span></td>
             <td data-label="還元率">{{ sale.point_rate or 0 }}%</td>
             <td data-label="価格">{{ sale.price or "-" }}円</td>
             <td data-label="最安値">{{ "○" if sale.is_cheapest else "-" }}</td>
-            <td data-label="通知">{{ "通知済" if sale.notified else "-" }}</td>
+            <td data-label="通知">{% if sale.notified %}<span class="badge badge-success">通知済</span>{% else %}-{% endif %}</td>
         </tr>
         {% else %}
         <tr><td colspan="7">セール履歴なし</td></tr>

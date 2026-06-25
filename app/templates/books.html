@@ -24,7 +24,7 @@
                 <td data-label="作品名"><a href="/books/{{ book.id }}">{{ book.title }}</a></td>
                 <td data-label="作者">{{ book.author or "-" }}</td>
                 <td data-label="ASIN">{{ book.asin or "-" }}</td>
-                <td data-label="有効">{{ "有効" if book.enabled else "無効" }}</td>
+                <td data-label="有効">{% if book.enabled %}<span class="badge badge-success">有効</span>{% else %}<span class="badge badge-muted">無効</span>{% endif %}</td>
                 <td data-label="通知条件">{{ book.condition_summary or "未設定（全通知）" }}</td>
                 <td data-label="操作">
                     <a href="/books/{{ book.id }}/edit" class="btn btn-secondary">編集</a>
