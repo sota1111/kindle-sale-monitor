@@ -1,14 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ book.title }} - 詳細{% endblock %}
 {% block content %}
-<div class="card">
-    <h1>{{ book.title }}</h1>
-    <p>作者: {{ book.author or "-" }}</p>
-    <p>出版社: {{ book.publisher or "-" }}</p>
-    <p>ASIN: {{ book.asin or "-" }}</p>
-    <p>Amazon URL: {% if book.amazon_url %}<a href="{{ book.amazon_url }}">{{ book.amazon_url }}</a>{% else %}-{% endif %}</p>
-    <p>sale-bon URL: {% if book.sale_bon_url %}<a href="{{ book.sale_bon_url }}">{{ book.sale_bon_url }}</a>{% else %}-{% endif %}</p>
-    <p>有効: {{ "有効" if book.enabled else "無効" }}</p>
+<div class="card detail-header">
+    <div class="book-cover">
+        {% if book.asin %}
+        <img src="https://images-na.ssl-images-amazon.com/images/P/{{ book.asin }}.09.LZZZZZZZ.jpg"
+             alt="{{ book.title }}"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="cover-fallback" style="display:none;">📚</div>
+        {% else %}
+        <div class="cover-fallback">📚</div>
+        {% endif %}
+    </div>
+    <div class="detail-meta">
+        <h1>{{ book.title }}</h1>
+        <dl class="meta-grid">
+            <div><dt>作者</dt><dd>{{ book.author or "-" }}</dd></div>
+            <div><dt>出版社</dt><dd>{{ book.publisher or "-" }}</dd></div>
+            <div><dt>ASIN</dt><dd>{{ book.asin or "-" }}</dd></div>
+            <div><dt>Amazon URL</dt><dd>{% if book.amazon_url %}<a href="{{ book.amazon_url }}">{{ book.amazon_url }}</a>{% else %}-{% endif %}</dd></div>
+            <div><dt>sale-bon URL</dt><dd>{% if book.sale_bon_url %}<a href="{{ book.sale_bon_url }}">{{ book.sale_bon_url }}</a>{% else %}-{% endif %}</dd></div>
+            <div><dt>有効</dt><dd>{% if book.enabled %}<span class="badge badge-success">有効</span>{% else %}<span class="badge badge-muted">無効</span>{% endif %}</dd></div>
+        </dl>
+    </div>
 </div>
 <div class="card">
     <h2>価格推移</h2>
@@ -24,11 +38,11 @@
         <tr>
             <td data-label="取得日時">{{ sale.fetched_at }}</td>
             <td data-label="巻">{{ sale.volume or "-" }}</td>
-            <td data-label="割引率">{{ sale.discount_rate or 0 }}%</td>
+            <td data-label="割引率"><span class="chip chip-discount{{ ' is-zero' if not sale.discount_rate }}">{{ sale.discount_rate or 0 }}%</span></td>
             <td data-label="還元率">{{ sale.point_rate or 0 }}%</td>
             <td data-label="価格">{{ sale.price or "-" }}円</td>
             <td data-label="最安値">{{ "○" if sale.is_cheapest else "-" }}</td>
-            <td data-label="通知">{{ "通知済" if sale.notified else "-" }}</td>
+            <td data-label="通知">{% if sale.notified %}<span class="badge badge-success">通知済</span>{% else %}-{% endif %}</td>
         </tr>
         {% else %}
         <tr><td colspan="7">セール履歴なし</td></tr>
@@ -61,50 +75,43 @@
 
     <h3>条件を追加</h3>
     <form id="condition-form" onsubmit="return addCondition(event)">
-        <table>
-            <tr>
-                <th>名前（任意）</th>
-                <td><input type="text" id="cond-name" placeholder="例: 50%+CB"></td>
-            </tr>
-            <tr>
-                <th>最低割引率 (%)</th>
-                <td><input type="number" id="cond-min-discount" min="0" max="100" placeholder="例: 50"></td>
-            </tr>
-            <tr>
-                <th>キャッシュバック必須</th>
-                <td><input type="checkbox" id="cond-cashback-only"></td>
-            </tr>
-            <tr>
-                <th>最低CB率 (%)</th>
-                <td><input type="number" id="cond-min-cashback" min="0" max="100" placeholder="例: 20"></td>
-            </tr>
-            <tr>
-                <th>対象巻（カンマ区切り、例: 1,2,3 または latest）</th>
-                <td><input type="text" id="cond-volume-filter" placeholder="空欄=全巻"></td>
-            </tr>
-            <tr>
-                <th>過去最安更新のみ</th>
-                <td><input type="checkbox" id="cond-cheapest-only"></td>
-            </tr>
-            <tr>
-                <th>無料のみ</th>
-                <td><input type="checkbox" id="cond-free-only"></td>
-            </tr>
-        </table>
-        <br>
-        <button type="submit" class="btn">条件を追加</button>
+        <div class="field-grid">
+            <div class="field-group">
+                <label class="field-label" for="cond-name">名前（任意）</label>
+                <input class="field" type="text" id="cond-name" placeholder="例: 50%+CB">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="cond-min-discount">最低割引率 (%)</label>
+                <input class="field" type="number" id="cond-min-discount" min="0" max="100" placeholder="例: 50">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="cond-min-cashback">最低CB率 (%)</label>
+                <input class="field" type="number" id="cond-min-cashback" min="0" max="100" placeholder="例: 20">
+            </div>
+            <div class="field-group field-group-full">
+                <label class="field-label" for="cond-volume-filter">対象巻（カンマ区切り、例: 1,2,3 または latest）</label>
+                <input class="field" type="text" id="cond-volume-filter" placeholder="空欄=全巻">
+            </div>
+        </div>
+        <div class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="cond-cashback-only"><span>キャッシュバック必須</span></label>
+            <label class="toggle"><input type="checkbox" id="cond-cheapest-only"><span>過去最安更新のみ</span></label>
+            <label class="toggle"><input type="checkbox" id="cond-free-only"><span>無料のみ</span></label>
+        </div>
+        <div style="margin-top:1rem">
+            <button type="submit" class="btn">条件を追加</button>
+        </div>
     </form>
 </div>
 
-<style>
-.chart-wrap { position: relative; width: 100%; height: 320px; }
-@media (max-width: 700px) {
-    .chart-wrap { height: 260px; }
-}
-</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 const bookId = {{ book.id }};
+// Graph colors come from the shared design tokens (app.css), see SOT-1249 案A.
+const CSS = getComputedStyle(document.documentElement);
+const token = (name, fallback) => (CSS.getPropertyValue(name).trim() || fallback);
+const AXIS_TEXT = token('--chart-text', '#5b6472');
+const AXIS_GRID = token('--chart-grid', '#e6e9ee');
 
 async function loadPriceHistory() {
     const canvas = document.getElementById('price-chart');
@@ -127,16 +134,16 @@ async function loadPriceHistory() {
                     {
                         label: '実効価格',
                         data: points.map(p => p.effective_price),
-                        borderColor: '#4CAF50',
-                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        borderColor: token('--chart-2', '#16a34a'),
+                        backgroundColor: 'transparent',
                         spanGaps: true,
                         tension: 0.2,
                     },
                     {
                         label: '価格',
                         data: points.map(p => p.price),
-                        borderColor: '#888',
-                        backgroundColor: 'rgba(136, 136, 136, 0.1)',
+                        borderColor: token('--chart-text', '#888'),
+                        backgroundColor: 'transparent',
                         spanGaps: true,
                         tension: 0.2,
                     },
@@ -146,11 +153,14 @@ async function loadPriceHistory() {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
+                    x: { ticks: { color: AXIS_TEXT }, grid: { color: AXIS_GRID } },
                     y: {
                         beginAtZero: false,
-                        ticks: { callback: v => v + '円' },
+                        ticks: { color: AXIS_TEXT, callback: v => v + '円' },
+                        grid: { color: AXIS_GRID },
                     },
                 },
+                plugins: { legend: { labels: { color: AXIS_TEXT } } },
             },
         });
     } catch (e) {

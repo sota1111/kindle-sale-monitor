@@ -4,22 +4,20 @@
 <div class="card">
     <h1>設定</h1>
     <form method="post" action="/settings">
-    <table class="responsive-table">
-        <thead><tr><th>設定キー</th><th>現在の値</th><th>更新日時</th></tr></thead>
-        <tbody>
+        <div class="field-grid">
         {% for s in settings %}
-        <tr>
-            <td data-label="設定キー">{{ s.key }}</td>
-            <td data-label="現在の値"><input type="text" name="{{ s.key }}" value="{{ s.value }}" style="width:120px"></td>
-            <td data-label="更新日時">{{ s.updated_at }}</td>
-        </tr>
+            <div class="field-group">
+                <label class="field-label" for="set-{{ loop.index }}">{{ s.key }}</label>
+                <input class="field" id="set-{{ loop.index }}" type="text" name="{{ s.key }}" value="{{ s.value }}">
+                <span class="field-hint">{{ s.updated_at }}</span>
+            </div>
         {% else %}
-        <tr><td colspan="3">設定なし</td></tr>
+            <p>設定なし</p>
         {% endfor %}
-        </tbody>
-    </table>
-    <br>
-    <button type="submit" class="btn">設定を保存</button>
+        </div>
+        <div style="margin-top:1rem">
+            <button type="submit" class="btn">設定を保存</button>
+        </div>
     </form>
 </div>
 {% endblock %}
