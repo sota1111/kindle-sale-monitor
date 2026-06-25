@@ -34,6 +34,24 @@
     .lang-toggle button + button { border-left: 1px solid #d4d8df; }
     .lang-toggle button.active { background: #2563eb; color: #fff; }
     .lang-toggle-row { display: flex; }
+    /* Dark mode (SOT-1249 案D). Login is standalone (no app.css) so it carries its
+       own dark overrides to stay consistent with the rest of the app. */
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1220; color: #e6ebf5; }
+      .card { background: #131c2e; border-color: #2a3550; box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+      h1 { color: #e6ebf5; }
+      .brand p { color: #9aa6bd; }
+      label { color: #e6ebf5; }
+      input { background: #1b2740; border-color: #2a3550; color: #e6ebf5; }
+      input:focus { border-color: #5b8cff; box-shadow: 0 0 0 3px #1c2c52; }
+      button { background: #5b8cff; }
+      button:hover { background: #6f9bff; }
+      .error { color: #fca5a5; background: #3a1d1d; border-color: #5b2a2a; }
+      .lang-toggle { border-color: #2a3550; }
+      .lang-toggle button { color: #9aa6bd; }
+      .lang-toggle button + button { border-left-color: #2a3550; }
+      .lang-toggle button.active { background: #5b8cff; color: #fff; }
+    }
   </style>
 </head>
 <body>

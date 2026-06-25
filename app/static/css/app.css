@@ -16,6 +16,7 @@
     --success-soft: #e7f6ed;
     --warning: #f59e0b;
     --warning-soft: #fdf3e0;
+    --warning-ink: #b45309;
     --danger: #dc2626;
     --danger-hover: #b91c1c;
     --danger-soft: #fdeaea;
@@ -126,7 +127,7 @@ textarea.field { min-height: 4.5rem; resize: vertical; }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
 .chip { display: inline-flex; align-items: center; padding: .15rem .55rem; border-radius: 8px;
         font-size: .8rem; font-weight: 700; white-space: nowrap; }
-.chip-discount { background: var(--warning-soft); color: #b45309; }
+.chip-discount { background: var(--warning-soft); color: var(--warning-ink); }
 .chip-discount.is-zero { background: var(--surface-muted); color: var(--muted); font-weight: 600; }
 
 /* --- book_detail header (SOT-1249 案B): cover + meta grid. --- */
@@ -164,6 +165,45 @@ textarea.field { min-height: 4.5rem; resize: vertical; }
 .toggle:hover { border-color: var(--primary); }
 .toggle input { width: 1.05rem; height: 1.05rem; accent-color: var(--primary); cursor: pointer; }
 .toggle:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+
+/* --- Dark mode (SOT-1249 案D). Every surface/text/accent above is token-driven,
+   so flipping the palette here covers the whole app. Charts read --chart-* tokens
+   too, so axis/series colors stay legible. Light mode is the default and unchanged. --- */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --canvas: #0b1220;
+        --surface: #131c2e;
+        --surface-muted: #1b2740;
+        --border: #2a3550;
+        --ink: #e6ebf5;
+        --muted: #9aa6bd;
+        --primary: #5b8cff;
+        --primary-hover: #6f9bff;
+        --primary-soft: #1c2c52;
+        --success: #4ade80;
+        --success-soft: #16321f;
+        --warning: #fbbf24;
+        --warning-soft: #3a2c12;
+        --warning-ink: #fbbf24;
+        --danger: #f87171;
+        --danger-hover: #ef4444;
+        --danger-soft: #3a1d1d;
+        --slate: #5b6b86;
+        --slate-hover: #6d7e9c;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,.45);
+        --shadow: 0 4px 16px rgba(0,0,0,.55);
+        --chart-1: #5b8cff;
+        --chart-2: #4ade80;
+        --chart-3: #fbbf24;
+        --chart-4: #f87171;
+        --chart-5: #a78bfa;
+        --chart-6: #22d3ee;
+        --chart-text: #9aa6bd;
+        --chart-grid: #2a3550;
+    }
+    /* Footer uses a fixed muted grey; keep it readable on the dark canvas. */
+    .app-footer { color: var(--muted); }
+}
 
 @media (max-width: 700px) {
     main { padding: 1.25rem .75rem; }
