@@ -1,0 +1,155 @@
+/* Kindle Sale Monitor — shared application stylesheet (SOT-1249 案A).
+   Global design tokens + shell + components. Moved out of base.html inline <style>
+   so every template shares one source of truth and tokens are enforced everywhere. */
+
+:root {
+    --canvas: #f4f6f9;
+    --surface: #ffffff;
+    --surface-muted: #f8fafc;
+    --border: #e6e9ee;
+    --ink: #1c2430;
+    --muted: #5b6472;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-soft: #eaf1fe;
+    --success: #16a34a;
+    --success-soft: #e7f6ed;
+    --warning: #f59e0b;
+    --warning-soft: #fdf3e0;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --danger-soft: #fdeaea;
+    --slate: #64748b;
+    --slate-hover: #475569;
+    --radius: 12px;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.06);
+    --shadow: 0 4px 16px rgba(16,24,40,.08);
+    /* Chart palette — Chart.js reads these via getComputedStyle so graph colors
+       stay in sync with the rest of the UI (and flip in dark mode). */
+    --chart-1: #2563eb;
+    --chart-2: #16a34a;
+    --chart-3: #f59e0b;
+    --chart-4: #dc2626;
+    --chart-5: #7c3aed;
+    --chart-6: #0891b2;
+    --chart-text: #5b6472;
+    --chart-grid: #e6e9ee;
+}
+
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       margin: 0; padding: 0; background: var(--canvas); color: var(--ink);
+       line-height: 1.6; display: flex; flex-direction: column; min-height: 100vh;
+       -webkit-font-smoothing: antialiased; }
+nav { position: sticky; top: 0; z-index: 20;
+      background: linear-gradient(90deg, #1e293b, #0f172a); color: #fff;
+      padding: .7rem 1.25rem; box-shadow: var(--shadow-sm);
+      display: flex; align-items: center; gap: .35rem; flex-wrap: nowrap; }
+.nav-brand { display: inline-flex; align-items: center; gap: .5rem;
+             font-weight: 700; margin-right: 1rem; letter-spacing: -.01em;
+             white-space: nowrap; flex-shrink: 0; }
+.nav-links { display: flex; flex-wrap: nowrap; align-items: center; gap: .35rem;
+             overflow-x: auto; min-width: 0; }
+.nav-mark { display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 7px;
+            background: linear-gradient(135deg, var(--primary), #f59e0b);
+            font-size: .85rem; }
+nav a { color: #cbd5e1; text-decoration: none; padding: .3rem .55rem;
+        border-radius: 7px; font-size: .72rem; white-space: nowrap;
+        display: inline-flex; flex-direction: column; align-items: center;
+        gap: .15rem; line-height: 1.1;
+        transition: background .15s, color .15s; }
+nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.nav-ico { width: 22px; height: 22px; display: block; flex-shrink: 0; }
+nav form { margin-left: auto; flex-shrink: 0; }
+nav .nav-logout { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
+                  color: #e2e8f0; cursor: pointer; font-family: inherit;
+                  display: inline-flex; align-items: center; justify-content: center;
+                  padding: .35rem; border-radius: 7px; transition: background .15s; }
+nav .nav-logout:hover { background: rgba(255,255,255,.18); }
+main { padding: 1.75rem 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; }
+h1 { font-size: 1.5rem; letter-spacing: -.02em; }
+h2 { font-size: 1.15rem; letter-spacing: -.01em; }
+.card { background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem;
+        box-shadow: var(--shadow-sm); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .6rem .65rem; border-bottom: 1px solid var(--border); text-align: left; }
+th { background: var(--surface-muted); font-weight: 600; color: var(--muted);
+     font-size: .82rem; text-transform: none; }
+tbody tr:hover { background: var(--surface-muted); }
+td a { color: var(--primary); text-decoration: none; }
+td a:hover { text-decoration: underline; }
+.btn { display: inline-flex; align-items: center; justify-content: center;
+       padding: .5rem .95rem; background: var(--primary); color: #fff;
+       border-radius: 8px; text-decoration: none; border: none; cursor: pointer;
+       font-size: .9rem; font-weight: 600; font-family: inherit;
+       transition: background .15s, box-shadow .15s; }
+.btn:hover { background: var(--primary-hover); box-shadow: var(--shadow); }
+.btn-danger { background: var(--danger); }
+.btn-danger:hover { background: var(--danger-hover); }
+.btn-secondary { background: var(--slate); }
+.btn-secondary:hover { background: var(--slate-hover); }
+.app-footer { border-top: 1px solid var(--border); padding: 1.25rem;
+              text-align: center; color: #94a3b8; font-size: .8rem; }
+.lang-toggle { display: inline-flex; align-items: center; margin-left: auto;
+               border: 1px solid rgba(255,255,255,.25); border-radius: 7px;
+               overflow: hidden; flex-shrink: 0; }
+.lang-toggle button { background: transparent; color: #cbd5e1; border: none;
+                      cursor: pointer; font-family: inherit; font-size: .8rem;
+                      font-weight: 600; padding: .3rem .55rem; line-height: 1;
+                      transition: background .15s, color .15s; }
+.lang-toggle button + button { border-left: 1px solid rgba(255,255,255,.25); }
+.lang-toggle button:hover { color: #fff; }
+.lang-toggle button.active { background: rgba(255,255,255,.2); color: #fff; }
+
+/* Shared form fields (SOT-1249 案A): one input/select/textarea baseline used by
+   every form so condition / register / settings forms look consistent. */
+.field { display: inline-block; width: 100%; padding: .5rem .65rem;
+         border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+         color: var(--ink); font-family: inherit; font-size: .9rem;
+         transition: border-color .15s, box-shadow .15s; }
+.field:focus { outline: none; border-color: var(--primary);
+               box-shadow: 0 0 0 3px var(--primary-soft); }
+textarea.field { min-height: 4.5rem; resize: vertical; }
+
+/* Chart container (shared by dashboard + book_detail). Fixed height so Chart.js
+   with maintainAspectRatio:false doesn't collapse on mobile (SOT-1247). */
+.chart-wrap { position: relative; width: 100%; height: 320px; }
+
+@media (max-width: 700px) {
+    main { padding: 1.25rem .75rem; }
+    .card { padding: 1.1rem; }
+    .chart-wrap { height: 260px; }
+    /* Mobile: keep the title (brand) and logout in the top bar; move ONLY the
+       navigation menu links to a fixed bar at the bottom of the screen. */
+    nav { gap: .15rem; }
+    .nav-links { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 20;
+                 background: linear-gradient(90deg, #1e293b, #0f172a);
+                 padding: .35rem .25rem; gap: .15rem;
+                 justify-content: space-around; overflow-x: visible;
+                 box-shadow: 0 -2px 8px rgba(0,0,0,.18); }
+    .nav-links a { flex: 1 1 0; font-size: .68rem; padding: .25rem .15rem; }
+    body { padding-bottom: 66px; }
+    /* Stacked-card tables: on mobile, collapse each row into a vertical
+       "label: value" card so no horizontal scrolling is required.
+       Desktop layout is unchanged. */
+    table.responsive-table { display: block; width: 100%; white-space: normal; }
+    table.responsive-table thead { display: none; }
+    table.responsive-table tbody { display: block; }
+    table.responsive-table tr { display: block; padding: .55rem 0; }
+    table.responsive-table tr + tr { border-top: 2px solid var(--border); }
+    table.responsive-table td {
+        display: flex; justify-content: space-between; align-items: baseline; gap: .75rem;
+        padding: .25rem .15rem; text-align: right; border: 0; white-space: normal;
+        overflow-wrap: anywhere; min-width: 0; max-width: none;
+    }
+    table.responsive-table td::before {
+        content: attr(data-label); flex: 0 0 auto; font-weight: 600;
+        color: var(--muted); text-align: left; white-space: nowrap;
+    }
+    table.responsive-table td[data-label=""]::before { content: none; }
+    table.responsive-table td:empty { display: none; }
+    /* Any table not yet tagged still falls back to in-box scroll (no page overflow). */
+    table:not(.responsive-table) { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

@@ -6,6 +6,7 @@ from typing import Optional
 import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
@@ -151,6 +152,7 @@ app.add_middleware(
     same_site="lax",
 )
 templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(books.router)
 app.include_router(check.router)

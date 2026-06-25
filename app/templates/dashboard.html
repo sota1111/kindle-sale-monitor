@@ -89,14 +89,16 @@
        padding: .9rem 1rem; text-align: center; }
 .kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--primary); letter-spacing: -.02em; }
 .kpi-label { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
-.chart-wrap { position: relative; width: 100%; height: 320px; }
-@media (max-width: 700px) {
-    .chart-wrap { height: 260px; }
-}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
-const TREND_COLORS = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2'];
+// Graph colors come from the shared design tokens (app.css) so they stay in sync
+// with the rest of the UI and flip automatically in dark mode.
+const CSS = getComputedStyle(document.documentElement);
+const token = (name, fallback) => (CSS.getPropertyValue(name).trim() || fallback);
+const TREND_COLORS = [1, 2, 3, 4, 5, 6].map(i => token('--chart-' + i, '#2563eb'));
+const AXIS_TEXT = token('--chart-text', '#5b6472');
+const AXIS_GRID = token('--chart-grid', '#e6e9ee');
 
 async function loadPriceTrends() {
     const canvas = document.getElementById('trend-chart');
@@ -135,8 +137,12 @@ async function loadPriceTrends() {
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
-                    y: { beginAtZero: false, ticks: { callback: v => v + '円' } },
+                    x: { ticks: { color: AXIS_TEXT }, grid: { color: AXIS_GRID } },
+                    y: { beginAtZero: false,
+                         ticks: { color: AXIS_TEXT, callback: v => v + '円' },
+                         grid: { color: AXIS_GRID } },
                 },
+                plugins: { legend: { labels: { color: AXIS_TEXT } } },
             },
         });
     } catch (e) {
