@@ -1,51 +1,45 @@
 # Worker Report
 
 ## Summary
-SOT-1153「仮データ登録とダッシュボード改修」: added a provisional (sample) price-history
-seeder and revamped the dashboard to visualize the data.
+SOT-1299「構成の最適化」: Web を表示専用 + 入力の Firestore 登録のみにし、リサーチ（価格・セール監視）を
+ローカル CLI に移行（案① + 1A + 2A + 3A + 4A）。
 
-**Worker non-response disclosure:** Gemini CLI was non-responsive — `scripts/ai/run_gemini.sh`
-exited with the dedicated non-response code `75` (`IneligibleTierError: UNSUPPORTED_CLIENT` —
-free-tier Gemini Code Assist no longer supported). Codex CLI was also non-responsive (usage-limit
-cooldown, exit 75). Per the Worker Non-Response Fallback Policy, Claude Code performed the
-implementation and verification directly. All Quality Gates were applied unchanged.
+**Fallback disclosure:** Both workers were non-responsive — Gemini CLI exited with the
+non-response code `75` (`IneligibleTierError: free-tier no longer supported`), and Codex CLI
+exited `75` (active usage-limit cooldown). Per the Worker Non-Response Fallback Policy, Claude
+Code performed BOTH the implementation and the verification directly. All Quality Gates were
+applied unchanged.
 
 ## Changed Files
-- `app/services/sample_data.py` (new) — idempotent `seed_sample_data(db, force=)` generating a
-  deterministic ~90-day daily price-trend series (`sale_type="sample"`) for 5 books; reuses
-  existing books by normalized title, never touches non-sample rows.
-- `app/api/dashboard.py` (new) — `GET /api/dashboard/summary` (KPIs) + `GET /api/dashboard/price-trends`
-  (per-book series); both tolerate empty data.
-- `app/schemas/dashboard.py` (new) — `DashboardSummary`, `PriceTrendPoint`, `PriceTrendSeries`.
-- `scripts/seed_sample_data.py` (new) — CLI to register provisional data on demand (`--force`),
-  ensures schema exists.
-- `app/config.py` — `seed_sample_data: bool = False` (env `SEED_SAMPLE_DATA`).
-- `app/main.py` — `_seed_sample_data()` startup hook gated on the flag; registered dashboard router
-  (aliased import `dashboard as dashboard_api` to avoid clash with the `dashboard()` route);
-  enriched `GET /` context with summary KPIs.
-- `app/templates/dashboard.html` — KPI card grid + multi-series Chart.js price-trend chart
-  (empty-state handled) + existing recent sales/notifications retained.
-- `app/templates/base.html` — new dashboard i18n DICT entries (ja→en).
-- `tests/test_sample_data.py` (new), `tests/test_api_dashboard.py` (new).
-- `.env.example`, `README.md` — document `SEED_SAMPLE_DATA` and `scripts/seed_sample_data.py`.
+- `app/main.py` — lifespan からアプリ内スケジューラ起動/停止を撤去（4A）。`check`/`run`/`scheduler`
+  ルータの import と mount を削除（1A/2A、コードは残置）。rehydrate と表示・登録ルータは維持。
+- `app/templates/dashboard.html` — 「手動チェック実行」フォーム/ボタンを撤去（「ほしい本リストを見る」は維持）。
+- `scripts/run_research.py`（新規）— ローカル実行 CLI。`firestore_sync` の mirror listener を有効化し、
+  起動時に best-effort で `rehydrate_from_firestore` → `run_check_all(db)` を実行（3A、SQLite→Firestore ミラー経由保存）。
+- `tests/test_api_scheduler.py`（削除）— 撤去した `/api/scheduler/*` ルータのテスト。
+- `tests/test_web_display_only.py`（新規）— `/run`・`/api/check`・`/api/check/all`・`/api/scheduler/jobs` が
+  404（未マウント）であること、表示系（`/`・`/books`）が応答することを確認。
+- `tests/test_run_research_cli.py`（新規）— CLI の smoke テスト（`run_check_all`/rehydrate をスタブ化、
+  正常系で exit 0・失敗系で exit 1）。
+- `README.md` / `.env.example` — ローカル運用前提（`python scripts/run_research.py`）に更新。本番定期監視停止（4A）を明記。
 
 ## Commands Run
-- `uv run ruff check app tests scripts` → All checks passed (exit 0)
-- `uv run mypy app` → Success: no issues found in 45 source files (exit 0)
-- `uv run pytest -q` → 144 passed (exit 0)
-- CLI smoke: `python scripts/seed_sample_data.py` → 5 books / 450 rows; rerun → 0 (idempotent);
-  `--force` → regenerates 450 without duplicating.
-- Render smoke: `GET /` → 200 (KPI + chart present); `GET /api/dashboard/summary` → 200.
+- `ruff check .` → All checks passed!（exit 0）
+- `python -m pytest -q` → 137 passed, 7 skipped(既存: async診断はplugin無で従来skip), 10 deselected(e2e marker)（exit 0）
+- `python -c "import app.main"` → OK（撤去ルータ参照の残存なし）
+- 新規/変更テスト: `tests/test_web_display_only.py` + `tests/test_run_research_cli.py` → 8 passed
 
 ## Acceptance Criteria
-- [x] 仮（サンプル）価格推移データをサーバに登録できる（CLI + 起動時フラグ）
-- [x] ダッシュボードで価格推移・KPIを評価できる（グラフ + KPIカード）
-- [x] 既存の実データに影響しない（`sale_type="sample"` で識別、非サンプル行は不変）
-- [x] Lint / TypeCheck / Test すべて pass
+- [x] Web から /run・/api/check・/api/scheduler が外れた（404）
+- [x] 手動チェック UI 撤去
+- [x] scripts/run_research.py 新設（run_check_all をローカル実行、ミラー経由保存）
+- [x] リサーチ/スケジューラのコードは残置（1A）
+- [x] テスト更新・追加が pass
+- [x] README/.env.example 更新
 
 ## Risks
-- `datetime.utcnow()` deprecation warning (benign; consistent with naive `fetched_at` column).
-- Startup seeding intentionally gated by `SEED_SAMPLE_DATA` so production is unaffected by default.
+- 本番（Cloud Run）の定期監視は停止する（4A、承認済み）。リサーチはローカル cron 等で運用する必要がある。
+- e2e（`pytest -m e2e`）はライブサーバ前提のため本変更では実行せず（表示系のみ・対象外）。
 
 ## Next Action
 READY_FOR_REVIEW

@@ -11,9 +11,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import books, check, history, run, settings
+from app.api import books, history, settings
 from app.api import dashboard as dashboard_api
-from app.api import scheduler as scheduler_api
 from app.auth import AuthMiddleware
 from app.config import settings as app_settings
 from app.database import Base, SessionLocal, engine, get_db
@@ -102,8 +101,9 @@ if app_settings.seed_sample_data:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    from app.models.settings import AppSettings
-    from app.services.scheduler import start_scheduler
+    # Web is display + Firestore-registration only (SOT-1299). Research (price
+    # monitoring) is no longer started here; run it locally via
+    # `python scripts/run_research.py`.
 
     # Auth-config check: log each missing auth setting distinctly so that
     # misconfiguration is visible in Cloud Run logs at boot time.
@@ -123,24 +123,7 @@ async def lifespan(app: FastAPI):
     if not auth_missing:
         logging.info("auth config OK")
 
-    db = SessionLocal()
-    try:
-        interval_setting = (
-            db.query(AppSettings).filter(AppSettings.key == "check_interval_hours").first()
-        )
-        interval_hours = (
-            int(interval_setting.value)
-            if interval_setting and interval_setting.value
-            else app_settings.check_interval_hours
-        )
-    finally:
-        db.close()
-    start_scheduler(app, interval_hours=interval_hours)
     yield
-    # Shutdown
-    from app.services.scheduler import stop_scheduler
-
-    stop_scheduler()
 
 
 app = FastAPI(title="Kindle Sale Monitor", version="1.0.0", lifespan=lifespan)
@@ -154,13 +137,13 @@ app.add_middleware(
 templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+# Web exposes display + registration only (SOT-1299). The research-trigger routers
+# (check / run / scheduler) are intentionally not mounted; their code is kept in the
+# repository and is driven locally via scripts/run_research.py.
 app.include_router(books.router)
-app.include_router(check.router)
 app.include_router(dashboard_api.router)
 app.include_router(history.router)
 app.include_router(settings.router)
-app.include_router(run.router)
-app.include_router(scheduler_api.router)
 
 
 @app.get("/api/health")
