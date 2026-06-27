@@ -195,12 +195,15 @@ curl http://localhost:8000/healthz
 # イメージをビルド
 docker build -t kindle-sale-monitor .
 
-# 起動（.envファイルを使用）
+# 起動（.envファイルを使用。Dockerfile の既定ポートは 8080）
 docker run --env-file .env -p 8080:8080 kindle-sale-monitor
 
-# 動作確認
-curl -X POST http://localhost:8080/run
+# 動作確認（Web は表示専用。ヘルスチェックで疎通確認する）
+curl http://localhost:8080/healthz
 ```
+
+> **注意（SOT-1299）**: Web にはリサーチ用エンドポイント（`POST /run` など）はマウントされていません。
+> 価格・セール監視はローカル CLI `python scripts/run_research.py` で実行してください。
 
 ## GCPへのデプロイ
 
